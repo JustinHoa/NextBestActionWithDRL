@@ -204,8 +204,8 @@
       },
 
       "0": {
-        "description": "Female and Single: Breast Examination is excluded.",
-        "must_not_do": ["Breast Examination"],
+        "description": "Female and Single: Gynecological Examination is excluded.",
+        "must_not_do": ["Gynecological Examination"],
         "must_do_before": {
           "Registration": [],
           "Payment": ["Registration"],
@@ -258,7 +258,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Chest X-ray": [
             "Registration",
@@ -269,7 +269,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "In-depth Eye Examination": [
             "Registration",
@@ -280,7 +280,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "General Ultrasound": [
             "Registration",
@@ -291,7 +291,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Urine Test": [
             "Registration",
@@ -302,7 +302,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "ENT Endoscopy": [
             "Registration",
@@ -313,7 +313,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Electrocardiogram (ECG)": [
             "Registration",
@@ -324,7 +324,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Post-bronchodilator Spirometry": [
             "Registration",
@@ -335,7 +335,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Cardiac Ultrasound": [
             "Registration",
@@ -346,7 +346,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Blood Test": [
             "Registration",
@@ -357,7 +357,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination"
+            "Breast Examination"
           ],
           "Conclusion": [
             "Registration",
@@ -368,7 +368,7 @@
             "Eye Examination",
             "ENT Examination",
             "Dental Examination",
-            "Gynecological Examination",
+            "Breast Examination",
             "DEXA Bone Density Scan",
             "Chest X-ray",
             "In-depth Eye Examination",

@@ -1,3 +1,6 @@
+# Phần phạt reward_repeat, reward_constraint thử là -1 -> model không học được, vẫn vi phạm ;<
+# Nên để phạt là -10.0 lại. -10.0 mà vẫn fail. vẫn vi phạm mấy cái repeat. Chấm hỏi thiệc hụ hụ.
+
 import numpy as np
 import pandas as pd
 import json
@@ -150,7 +153,7 @@ class NextBestActionEnv(Env):
         reward_waiting = 0.0
 
         # 1️⃣ Kiểm tra repeat
-        if prefix[action] == 1:
+        if prefix[action] == 1: # Lưu ý cái prefix action này thì action đếm từ mấy tới mấy. Có bị lộn không nhỉ mà sao lỗi quài tức quá.
             reward_repeat = -10.0
             info["violation"] = "repeat_action"
             valid = False
@@ -196,14 +199,14 @@ class NextBestActionEnv(Env):
 
             # Copy và an toàn khi gộp specific nodes
             ql = queue_lengths.copy()
-            if ql.size > 20:
-                # gộp node 4 và 20 nếu tồn tại
-                try:
-                    combined = ql[4] + ql[20]
-                    ql[4] = combined
-                    ql[20] = combined
-                except Exception:
-                    pass
+            # if ql.size > 20:
+            #     # gộp node 4 và 20 nếu tồn tại
+            #     try:
+            #         combined = ql[4] + ql[20]
+            #         ql[4] = combined
+            #         ql[20] = combined
+            #     except Exception:
+            #         pass
 
             for idx, value in enumerate(ql):
                 # guard: nếu actions thay đổi số lượng
@@ -234,12 +237,16 @@ class NextBestActionEnv(Env):
             )
 
             arr = np.array(remaining_time, dtype=float)
-            if np.all(arr == 0):
-                arr = np.ones_like(arr) * 1e-6
-            norm = (arr - arr.min()) / (arr.max() - arr.min() + 1e-6)
+            # if np.all(arr == 0):
+            #     arr = np.ones_like(arr) * 1e-6
 
-            waiting_time = norm[action] if action < len(norm) else 1.0
-            reward_waiting = 1.0 - waiting_time
+            if arr.max() == arr.min():
+                normalization = np.zeros_like(arr) 
+            else:   
+                normalization = (arr - arr.min()) / (arr.max() - arr.min())
+
+            waiting_time = normalization[action] if action < len(normalization) else 1.0
+            reward_waiting = (1.0 - waiting_time) * 10
 
         # 6️⃣ Tổng hợp reward
         reward = reward_constraint + reward_repeat + reward_waiting
@@ -308,3 +315,5 @@ class NextBestActionEnv(Env):
     def render(self, mode="human"):
         print("Current state ({} features):".format(len(self.state)))
         print(self.state)
+
+

@@ -1,6 +1,4 @@
-# Phần phạt reward_repeat, reward_constraint thử là -1 -> model không học được, vẫn vi phạm ;<
-# Nên để phạt là -10.0 lại. -10.0 mà vẫn fail. vẫn vi phạm mấy cái repeat. Chấm hỏi thiệc hụ hụ.
-
+# thêm reward bias nghĩa là nếu 2 action blood test & urine test chưa làm thì phải ưu tiên nó hehe.
 import numpy as np
 import pandas as pd
 import json
@@ -151,6 +149,7 @@ class NextBestActionEnv(Env):
         reward_repeat = 0.0
         reward_constraint = 0.0
         reward_waiting = 0.0
+        reward_bias = 0.0
 
         # 1️⃣ Kiểm tra repeat
         if prefix[action] == 1: # Lưu ý cái prefix action này thì action đếm từ mấy tới mấy. Có bị lộn không nhỉ mà sao lỗi quài tức quá.
@@ -248,8 +247,18 @@ class NextBestActionEnv(Env):
             waiting_time = normalization[action] if action < len(normalization) else 1.0
             reward_waiting = (1.0 - waiting_time) * 10
 
-        # 6️⃣ Tổng hợp reward
-        reward = reward_constraint + reward_repeat + reward_waiting
+        # 6️⃣ Reward bias: ưu tiên làm Blood Test & Urine Test
+        blood_idx = 10
+        urine_idx = 11
+
+        if valid:
+            if blood_result_time == -1 and action == blood_idx:
+                reward_bias += 5.0
+            if urine_result_time == -1 and action == urine_idx:
+                reward_bias += 5.0
+
+        # 7️⃣ Tổng hợp reward 
+        reward = reward_constraint + reward_repeat + reward_waiting + reward_bias
         return reward, valid, info
 
     # ---------------------------------------------------------------

@@ -78,7 +78,7 @@ if not early_stop:
 # =========================================
 # 4️⃣ Lưu model
 # =========================================
-save_path = os.path.abspath("dqn_model_test" if TEST_MODE else "dqn_model_best")
+save_path = os.path.abspath(os.path.join("models", "dqn_model_test" if TEST_MODE else "dqn_model"))
 model.save(save_path)
 print(f"✅ Model saved to: {save_path}.zip")
 

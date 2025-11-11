@@ -139,6 +139,7 @@ def patient_generator(env, center: HealthCheckCenter, num_patients: int, coordin
     Input: env, center, num_patients, coordinator
     Output: tạo env.process cho từng patient
     """
+    
     pass
 
 # ============================================

@@ -3,11 +3,6 @@ import random
 import json
 import os
 import pandas as pd
-import numpy as np
-from stable_baselines3 import DQN
-import torch
-
-
 
 # -----------------------------
 # Load activity info
@@ -123,7 +118,7 @@ class Patient:
                 "marital_status": self.marital_status if activity_name=="Registration" else "",
                 "blood_result_ready": self.lab_results["blood"] if activity_name=="Blood Test" else "",
                 "urine_result_ready": self.lab_results["urine"] if activity_name=="Urine Test" else "",
-                "queue_status": json.dumps(queue_snapshot)  
+                "queue_status": json.dumps(queue_snapshot)  # 💥 thêm dòng này
             })
 
             # Update prefix
@@ -182,41 +177,7 @@ class NextBestAction:
     def __init__(self, mode="greedy-epsilon", epsilon=0.3, model=None):
         self.mode = mode
         self.epsilon = epsilon
-        
-        if mode == "dqn":
-            model_path = os.path.join(model_dir, "dqn_model.zip")
-            self.model = DQN.load(model_path)
-        else:
-            self.model = model
-        
-    def build_state(self, patient: Patient, queue_status: dict):
-        # --- Encode gender/marital ---
-        gender = 1.0 if patient.gender == "Male" else 0.0
-        marital = 1.0 if patient.marital_status == "Married" else 0.0
-
-        # --- Prefix vector (đã có sẵn dạng list nhị phân) ---
-        prefix = np.array(patient.prefix, dtype=float)
-
-        # --- Queue lengths: đảm bảo đúng thứ tự activity_info ---
-        queue_lengths = []
-        for name in activity_info.keys():
-            key = "GME_Conclusion" if name in ["General Medicine Examination", "Conclusion"] else name
-            queue_lengths.append(queue_status.get(key, 0))
-        queue_lengths = np.array(queue_lengths, dtype=float)
-
-        # --- Lab results ---
-        blood_result_time = patient.lab_results["blood"]
-        urine_result_time = patient.lab_results["urine"]
-
-        # --- Combine thành 1 vector ---
-        state_list = (
-            [gender, marital]
-            + prefix.tolist()
-            + queue_lengths.tolist()
-            + [blood_result_time, urine_result_time]
-        )
-        state = np.array(state_list, dtype=float).reshape(1, -1)
-        return state
+        self.model = model
 
     def predict(self, patient: Patient, queue_status: dict, candidates: list) -> str:
         # Greedy-epsilon
@@ -236,45 +197,8 @@ class NextBestAction:
             return selected
         # DQN
         elif self.mode == "dqn":
-            state = self.build_state(patient, queue_status)
-            action_idx, _ = self.model.predict(state, deterministic=True)
-            action_idx = int(action_idx) if isinstance(action_idx, np.ndarray) else action_idx
-
-            all_acts = list(activity_info.keys())
-            selected = all_acts[action_idx]
-
-            if selected not in candidates:
-                # --- Lấy Q-values ---
-                import torch
-                with torch.no_grad():
-                    q_values = self.model.q_net(torch.tensor(state, dtype=torch.float32)).detach().cpu().numpy().flatten()
-
-                # --- In log chi tiết ---
-                print(f"\n[DQN Fallback] Patient {patient.id}")
-                print(f"State vector: {state.flatten()}")
-                print(f"Predicted action: '{selected}' (index {action_idx})")
-                print(f"Candidates: {candidates}")
-                print("Q-values for all actions:")
-                for i, q in enumerate(q_values):
-                    marker = "⬅️ SELECTED" if i == action_idx else ""
-                    act_name = all_acts[i]
-                    print(f"{i:02d}: {act_name:<35} Q = {q:.4f} {marker}")
-
-                # --- Fallback greedy ---
-                min_count = float("inf")
-                best = None
-                for act in candidates:
-                    key = "GME_Conclusion" if act in ["General Medicine Examination", "Conclusion"] else act
-                    if queue_status.get(key, 0) < min_count:
-                        min_count = queue_status.get(key, 0)
-                        best = act
-                selected = best
-                print(f"Selected fallback action: '{selected}'\n")
-                print("=====================================")
-            
-            return selected
-
-            
+            return
+        
         # Discrete BCQ
         else: 
             return

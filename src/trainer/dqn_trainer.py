@@ -13,6 +13,9 @@ from tqdm import tqdm
 from src.agents.dqn_agent import DQNAgent
 from src.agents.double_dqn_agent import DoubleDQNAgent
 from src.agents.dqn_per_agent import DQNPerAgent
+from src.agents.dueling_dqn_agent import DuelingDQNAgent
+from src.agents.multi_step_dqn_agent import MultiStepDQNAgent
+from src.agents.rainbow_agent import RainbowAgent
 from src.config import (ACTION_SIZE, CHECKPOINT_INTERVAL, EPS_DECAY, EPS_END,
                         EPS_START, MAX_T, STATE_SIZE)
 from src.envs.fill_blank_env import FillBlanksEnv
@@ -21,6 +24,9 @@ AGENT_REGISTRY = {
     "dqn": DQNAgent,
     "double_dqn": DoubleDQNAgent,
     "dqn_per": DQNPerAgent,
+    "dueling_dqn": DuelingDQNAgent,
+    "multi_step_dqn": MultiStepDQNAgent,
+    "rainbow": RainbowAgent,
 }
 
 AVAILABLE_AGENTS = tuple(AGENT_REGISTRY.keys())
@@ -53,6 +59,7 @@ def train(num_episodes: int,
           agent_type: str = "dqn",
           agent_kwargs: Optional[dict] = None):
     env = FillBlanksEnv(state_size=STATE_SIZE, action_size=ACTION_SIZE)
+    agent_label = agent_type.replace("_", " ").title()
     if agent is None:
         agent_cls = AGENT_REGISTRY.get(agent_type)
         if agent_cls is None:
@@ -68,7 +75,7 @@ def train(num_episodes: int,
     eps = EPS_START
     scores_window = deque(maxlen=100)
 
-    tqdm_bar = tqdm(range(1, num_episodes + 1), desc=f"Training {model_name} [{agent_type}]")
+    tqdm_bar = tqdm(range(1, num_episodes + 1), desc=f"Training {model_name} [{agent_label}]")
 
     for i_episode in tqdm_bar:
         state = env.reset()
@@ -110,7 +117,7 @@ def train(num_episodes: int,
             with open(model_dir / f"reward_{i_episode}.pkl", "wb") as f:
                 pickle.dump(episode_rewards, f)
 
-            loss_title = f"DQN Loss until Episode {i_episode}"
+            loss_title = f"{agent_label} Loss until Episode {i_episode}"
             _save_loss_plot(loss_history, model_dir / f"loss_checkpoint_{i_episode}.png", loss_title)
 
         if i_episode % 100 == 0:
@@ -123,7 +130,7 @@ def train(num_episodes: int,
         pickle.dump(episode_rewards, f)
 
     _save_loss_plot(loss_history, model_dir / f"loss_final_{num_episodes}.png",
-                    f"DQN Loss Final after {num_episodes} Episodes")
+                    f"{agent_label} Loss Final after {num_episodes} Episodes")
 
     print("Training finished!")
     return agent, episode_rewards, loss_history

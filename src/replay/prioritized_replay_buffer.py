@@ -1,11 +1,13 @@
 import random
+from collections import deque
 from typing import List, Sequence, Tuple
 
 import numpy as np
 import torch
 
-from src.config import (BATCH_SIZE, BUFFER_SIZE, DEVICE, PER_ALPHA,
-                        PER_BETA_END, PER_BETA_FRAMES, PER_BETA_START, PER_EPS)
+from src.config import (BATCH_SIZE, BUFFER_SIZE, DEVICE, GAMMA, N_STEP,
+                        PER_ALPHA, PER_BETA_END, PER_BETA_FRAMES, PER_BETA_START,
+                        PER_EPS)
 
 
 class PrioritizedReplayBuffer:
@@ -18,7 +20,9 @@ class PrioritizedReplayBuffer:
                  beta_start: float = PER_BETA_START,
                  beta_frames: int = PER_BETA_FRAMES,
                  per_eps: float = PER_EPS,
-                 seed: int = 0):
+                 seed: int = 0,
+                 n_step: int = 1,
+                 gamma: float = GAMMA):
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         self.alpha = alpha
@@ -33,8 +37,41 @@ class PrioritizedReplayBuffer:
         self.next_idx = 0
         self.size = 0
         self.max_priority = 1.0
+        self.n_step = n_step
+        self.gamma = gamma
+        self.n_step_buffer = deque(maxlen=n_step) if n_step > 1 else None
 
     def add(self, state, action, reward, next_state, done):
+        if self.n_step == 1:
+            self._store(state, action, reward, next_state, done)
+            return
+
+        self.n_step_buffer.append((state, action, reward, next_state, done))
+
+        if len(self.n_step_buffer) == self.n_step:
+            self._append_from_buffer()
+
+        if done:
+            while len(self.n_step_buffer) > 0:
+                self._append_from_buffer()
+
+    def _append_from_buffer(self):
+        reward, next_state, done_flag = self._get_n_step_info()
+        state, action = self.n_step_buffer[0][:2]
+        self._store(state, action, reward, next_state, done_flag)
+        self.n_step_buffer.popleft()
+
+    def _get_n_step_info(self):
+        reward, next_state, done_flag = 0.0, self.n_step_buffer[-1][3], self.n_step_buffer[-1][4]
+        for idx, (_, _, r, n_state, done) in enumerate(self.n_step_buffer):
+            reward += (self.gamma ** idx) * r
+            if done:
+                next_state = n_state
+                done_flag = True
+                break
+        return reward, next_state, done_flag
+
+    def _store(self, state, action, reward, next_state, done):
         self.memory[self.next_idx] = (state, action, reward, next_state, done)
         self.priorities[self.next_idx] = self.max_priority
         self.next_idx = (self.next_idx + 1) % self.buffer_size

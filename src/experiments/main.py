@@ -18,7 +18,7 @@ def parse_args():
     parser.add_argument("--save-interval", type=int,
                         help="Checkpoint interval in episodes. Defaults to 10k for full, min(episodes,10k) for test.")
     parser.add_argument("--agent", choices=AVAILABLE_AGENTS, default="dqn",
-                        help="Which agent variant to train (vanilla DQN, Double DQN, or DQN+PER).")
+                        help="Choose the agent variant (DQN, Double, Dueling, Multi-step, PER, Rainbow).")
     return parser.parse_args()
 
 

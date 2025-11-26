@@ -1,5 +1,5 @@
 import random
-from typing import Optional
+from typing import Optional, Type
 
 import numpy as np
 import torch
@@ -13,14 +13,19 @@ from src.replay.replay_buffer import ReplayBuffer
 
 
 class DQNAgent:
-    def __init__(self, state_size: int = STATE_SIZE, action_size: int = ACTION_SIZE, seed: int = 0):
+    def __init__(self,
+                 state_size: int = STATE_SIZE,
+                 action_size: int = ACTION_SIZE,
+                 seed: int = 0,
+                 network_cls: Type[torch.nn.Module] = QNetwork):
         self.state_size = state_size
         self.action_size = action_size
         self.seed = random.seed(seed)
         self.device = DEVICE
+        self.network_cls = network_cls
 
-        self.qnetwork_local = QNetwork(state_size, action_size, seed).to(self.device)
-        self.qnetwork_target = QNetwork(state_size, action_size, seed).to(self.device)
+        self.qnetwork_local = self.network_cls(state_size, action_size, seed).to(self.device)
+        self.qnetwork_target = self.network_cls(state_size, action_size, seed).to(self.device)
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=LR)
         self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
 

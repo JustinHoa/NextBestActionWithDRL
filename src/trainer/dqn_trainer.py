@@ -32,16 +32,41 @@ AGENT_REGISTRY = {
 AVAILABLE_AGENTS = tuple(AGENT_REGISTRY.keys())
 
 
+def _append_pickle_batch(path: Path, batch):
+    if not batch:
+        return
+    with path.open("ab") as f:
+        pickle.dump(batch, f, protocol=pickle.HIGHEST_PROTOCOL)
+    batch.clear()
+
+
+def _load_pickle_sequence(path: Path):
+    values = []
+    if not path.exists():
+        return values
+    with path.open("rb") as f:
+        while True:
+            try:
+                chunk = pickle.load(f)
+                if isinstance(chunk, list):
+                    values.extend(chunk)
+                else:
+                    values.append(chunk)
+            except EOFError:
+                break
+    return values
+
+
 def _ensure_dir(path: Path) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     return path
 
 
-def _save_loss_plot(loss_history, path: Path, title: str):
+def _save_loss_plot(loss_history, path: Path, title: str, label: str = "Loss"):
     if len(loss_history) == 0:
         return
     plt.figure(figsize=(8, 4))
-    plt.plot(loss_history, label='DQN Loss')
+    plt.plot(loss_history, label=label)
     plt.xlabel('Training Steps')
     plt.ylabel('Loss')
     plt.title(title)
@@ -68,9 +93,14 @@ def train(num_episodes: int,
         agent = agent_cls(**kwargs)
 
     model_dir = _ensure_dir(Path("models") / model_name)
+    history_file = model_dir / "history.pkl"
+    loss_file = model_dir / "loss.pkl"
+    for file in (history_file, loss_file):
+        if file.exists():
+            file.unlink()
 
-    history = []
-    loss_history = []
+    history_batch = []
+    loss_batch = []
     episode_rewards = []
     eps = EPS_START
     scores_window = deque(maxlen=100)
@@ -88,9 +118,9 @@ def train(num_episodes: int,
 
             loss = agent.step(state, action, reward, next_state, done)
             if loss is not None:
-                loss_history.append(loss)
+                loss_batch.append(loss)
 
-            history.append({
+            history_batch.append({
                 'state': state.copy(),
                 'action': action,
                 'reward': reward,
@@ -112,28 +142,36 @@ def train(num_episodes: int,
             checkpoint_path = model_dir / f"checkpoint_{i_episode}.pth"
             torch.save(agent.qnetwork_local.state_dict(), checkpoint_path)
 
-            with open(model_dir / f"history_{i_episode}.pkl", "wb") as f:
-                pickle.dump(history, f)
+            _append_pickle_batch(history_file, history_batch)
+            _append_pickle_batch(loss_file, loss_batch)
+
             with open(model_dir / f"reward_{i_episode}.pkl", "wb") as f:
                 pickle.dump(episode_rewards, f)
 
             loss_title = f"{agent_label} Loss until Episode {i_episode}"
-            _save_loss_plot(loss_history, model_dir / f"loss_checkpoint_{i_episode}.png", loss_title)
+            all_losses = _load_pickle_sequence(loss_file)
+            _save_loss_plot(all_losses,
+                            model_dir / f"loss_checkpoint_{i_episode}.png",
+                            loss_title,
+                            label=f"{agent_label} Loss")
 
         if i_episode % 100 == 0:
             tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}")
 
+    _append_pickle_batch(history_file, history_batch)
+    _append_pickle_batch(loss_file, loss_batch)
+
     torch.save(agent.qnetwork_local.state_dict(), model_dir / f"final_{num_episodes}.pth")
-    with open(model_dir / f"final_history_{num_episodes}.pkl", "wb") as f:
-        pickle.dump(history, f)
     with open(model_dir / f"final_rewards_{num_episodes}.pkl", "wb") as f:
         pickle.dump(episode_rewards, f)
 
-    _save_loss_plot(loss_history, model_dir / f"loss_final_{num_episodes}.png",
-                    f"{agent_label} Loss Final after {num_episodes} Episodes")
+    all_losses = _load_pickle_sequence(loss_file)
+    _save_loss_plot(all_losses, model_dir / f"loss_final_{num_episodes}.png",
+                    f"{agent_label} Loss Final after {num_episodes} Episodes",
+                    label=f"{agent_label} Loss")
 
     print("Training finished!")
-    return agent, episode_rewards, loss_history
+    return agent, episode_rewards, all_losses
 
 
 def test(agent: Optional[object] = None,

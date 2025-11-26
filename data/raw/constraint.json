@@ -1,0 +1,552 @@
+{
+  "description": "Constraint rules structured by Gender and Marital Status, including 'must_do_before' (prerequisites) and 'must_not_do' (excluded activities) for each demographic group.",
+
+  "constraints_by_demographics": {
+    "0": {
+      "description": "Constraints for Female patients.",
+
+      "1": {
+        "description": "Female and Married: Full examination process applied.",
+        "must_not_do": [],
+        "must_do_before": {
+          "Registration": [],
+          "Payment": ["Registration"],
+          "Get Triage Number": ["Registration", "Payment"],
+          "Measure Vital Signs": [
+            "Registration",
+            "Payment",
+            "Get Triage Number"
+          ],
+          "General Medicine Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs"
+          ],
+          "Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "ENT Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Dental Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Gynecological Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Breast Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "DEXA Bone Density Scan": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Chest X-ray": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "In-depth Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "General Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Urine Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "ENT Endoscopy": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Electrocardiogram (ECG)": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Post-bronchodilator Spirometry": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Cardiac Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Blood Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination"
+          ],
+          "Conclusion": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Gynecological Examination",
+            "Breast Examination",
+            "DEXA Bone Density Scan",
+            "Chest X-ray",
+            "In-depth Eye Examination",
+            "General Ultrasound",
+            "Urine Test",
+            "ENT Endoscopy",
+            "Electrocardiogram (ECG)",
+            "Post-bronchodilator Spirometry",
+            "Cardiac Ultrasound",
+            "Blood Test"
+          ]
+        }
+      },
+
+      "0": {
+        "description": "Female and Single: Gynecological Examination is excluded.",
+        "must_not_do": ["Gynecological Examination"],
+        "must_do_before": {
+          "Registration": [],
+          "Payment": ["Registration"],
+          "Get Triage Number": ["Registration", "Payment"],
+          "Measure Vital Signs": [
+            "Registration",
+            "Payment",
+            "Get Triage Number"
+          ],
+          "General Medicine Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs"
+          ],
+          "Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "ENT Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Dental Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Gynecological Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "DEXA Bone Density Scan": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Chest X-ray": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "In-depth Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "General Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Urine Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "ENT Endoscopy": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Electrocardiogram (ECG)": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Post-bronchodilator Spirometry": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Cardiac Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Blood Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination"
+          ],
+          "Conclusion": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "Breast Examination",
+            "DEXA Bone Density Scan",
+            "Chest X-ray",
+            "In-depth Eye Examination",
+            "General Ultrasound",
+            "Urine Test",
+            "ENT Endoscopy",
+            "Electrocardiogram (ECG)",
+            "Post-bronchodilator Spirometry",
+            "Cardiac Ultrasound",
+            "Blood Test"
+          ]
+        }
+      }
+    },
+
+    "1": {
+      "description": "Constraints for Male patients.",
+      "any": {
+        "description": "Male: Gynecological Examination and Breast Examination are excluded.",
+        "must_not_do": ["Gynecological Examination", "Breast Examination"],
+        "must_do_before": {
+          "Registration": [],
+          "Payment": ["Registration"],
+          "Get Triage Number": ["Registration", "Payment"],
+          "Measure Vital Signs": [
+            "Registration",
+            "Payment",
+            "Get Triage Number"
+          ],
+          "General Medicine Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs"
+          ],
+          "Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "ENT Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "Dental Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination"
+          ],
+          "DEXA Bone Density Scan": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Chest X-ray": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "In-depth Eye Examination": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "General Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Urine Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "ENT Endoscopy": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Electrocardiogram (ECG)": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Post-bronchodilator Spirometry": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Cardiac Ultrasound": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Blood Test": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination"
+          ],
+          "Conclusion": [
+            "Registration",
+            "Payment",
+            "Get Triage Number",
+            "Measure Vital Signs",
+            "General Medicine Examination",
+            "Eye Examination",
+            "ENT Examination",
+            "Dental Examination",
+            "DEXA Bone Density Scan",
+            "Chest X-ray",
+            "In-depth Eye Examination",
+            "General Ultrasound",
+            "Urine Test",
+            "ENT Endoscopy",
+            "Electrocardiogram (ECG)",
+            "Post-bronchodilator Spirometry",
+            "Cardiac Ultrasound",
+            "Blood Test"
+          ]
+        }
+      }
+    }
+  }
+}

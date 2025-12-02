@@ -1,5 +1,6 @@
 import os
 from collections import deque
+import sys
 
 import numpy as np
 import torch
@@ -9,6 +10,7 @@ from agents.dqn_agent import DQNAgent
 from agents.ddqn_agent import DDQNAgent
 from agents.dueling_agent import DuelingAgent
 from agents.rainbow_agent import RainbowAgent
+from agents.per_dqn_agent import PerDqnAgent
 from common.env import FillBlanksEnv
 from common.utils import (
     ACTION_SIZE,
@@ -19,23 +21,6 @@ from common.utils import (
     plot_training_status,
 )
 from simulation.simulation_process import run_simulation
-
-# --- CHỌN THUẬT TOÁN ĐỂ CHẠY ---
-ALGO_TO_RUN = "DDQN"  # Options: "DQN", "DDQN", "Dueling", "Rainbow"
-
-
-def get_agent(algo_name: str):
-    """Factory function để lấy agent tương ứng."""
-    if algo_name == "DQN":
-        return DQNAgent(STATE_SIZE, ACTION_SIZE)
-    if algo_name == "DDQN":
-        return DDQNAgent(STATE_SIZE, ACTION_SIZE)
-    if algo_name == "Dueling":
-        return DuelingAgent(STATE_SIZE, ACTION_SIZE)
-    if algo_name == "Rainbow":
-        # Rainbow dùng Noisy Nets nên không cần Epsilon-Greedy
-        return RainbowAgent(STATE_SIZE, ACTION_SIZE)
-    raise ValueError(f"Unknown algorithm: {algo_name}")
 
 
 def train(algo_name: str, version_id: int):
@@ -116,22 +101,66 @@ def train(algo_name: str, version_id: int):
         print(f"\n🌍 Running simulation with new model to generate data for Gen {version_id + 1}...")
         run_simulation(num_patients=200, agent=agent, version_output=str(version_id), is_model_run=True)
 
+SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow"]
+
 if __name__ == "__main__":
-    # --- BƯỚC 0: KHỞI TẠO DỮ LIỆU NGẪU NHIÊN (nếu cần) ---
+    # --- 1. Lấy tham số từ command line ---
+    if len(sys.argv) < 2:
+        print("❌ Bạn chưa truyền thuật toán.")
+        print("   Ví dụ cách chạy:")
+        print("   python main.py DQN")
+        print("   python main.py DDQN")
+        print("   python main.py Dueling")
+        print("   python main.py Rainbow")
+        sys.exit(1)
+
+    ALGO_TO_RUN = sys.argv[1].strip()
+
+    def get_agent(algo_name: str):
+        """Factory function để lấy agent tương ứng."""
+        if algo_name == "DQN":
+            return DQNAgent(STATE_SIZE, ACTION_SIZE)
+        if algo_name == "DDQN":
+            return DDQNAgent(STATE_SIZE, ACTION_SIZE)
+        if algo_name == "Dueling":
+            return DuelingAgent(STATE_SIZE, ACTION_SIZE)
+        if algo_name == "PerDQN":
+            return PerDqnAgent(STATE_SIZE, ACTION_SIZE)
+        if algo_name == "Rainbow":
+            return RainbowAgent(STATE_SIZE, ACTION_SIZE)
+        raise ValueError(f"Unknown algorithm: {algo_name}")
+
+    # --- 2. Kiểm tra thuật toán hợp lệ ---
+    if ALGO_TO_RUN not in SUPPORTED_ALGOS:
+        print(f"❌ Thuật toán không hợp lệ: {ALGO_TO_RUN}")
+        print("   Hỗ trợ:", SUPPORTED_ALGOS)
+        sys.exit(1)
+
+    print(f"🚀 ALGO_TO_RUN = {ALGO_TO_RUN}\n")
+
+    agent = get_agent(ALGO_TO_RUN)
+
+    # --- 3. Kiểm tra file dữ liệu ban đầu ---
     initial_data_path = os.path.join("data", "raw", "200_queue_log_version_0.csv")
+
     if not os.path.exists(initial_data_path):
         print("--- Initial data (version 0) not found. ---")
         print("🌍 Running RANDOM simulation to generate initial queue log...")
+
         run_simulation(
-            num_patients=200, 
-            agent=None,  # Chạy ở chế độ ngẫu nhiên
-            version_output="0", 
-            is_model_run=False # Chỉ sinh data, không phải model run
+            num_patients=200,
+            agent=None,             # Random mode
+            version_output="0",
+            is_model_run=False
         )
+
         print("--- Initial data generated successfully. ---\n")
 
+    # --- 4. Chạy đầy đủ 3 thế hệ training ---
     print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] ---")
-    train(ALGO_TO_RUN, 1)
-    train(ALGO_TO_RUN, 2)
-    train(ALGO_TO_RUN, 3)
+
+    train(agent, ALGO_TO_RUN, 1)
+    train(agent, ALGO_TO_RUN, 2)
+    train(agent, ALGO_TO_RUN, 3)
+
     print("\n🎉🎉🎉 All training generations completed! 🎉🎉🎉")

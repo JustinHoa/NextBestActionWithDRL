@@ -17,6 +17,7 @@ from agents.dqn_agent import DQNAgent
 from agents.ddqn_agent import DDQNAgent
 from agents.dueling_agent import DuelingAgent
 from agents.rainbow_agent import RainbowAgent
+from agents.per_dqn_agent import PerDqnAgent
 
 # --- CONFIG ---
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -227,40 +228,88 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
     total_times = [p.end_time - p.start_time for p in patients_list if hasattr(p, 'end_time') and p.end_time > 0]
     return np.mean(total_times) if total_times else 0
 
-if __name__ == "__main__":
-    NUM_PATIENTS = 200
-    MODEL_PATH = os.path.join(ROOT_DIR, "logs/DDQN/final_gen3.pth") # <-- THAY ĐỔI MODEL Ở ĐÂY
-    
-    print("--- RUNNING SIMULATION FOR EVALUATION ---")
-    
-    # 1. Chạy mô phỏng ngẫu nhiên (Baseline)
-    print("\n[1/2] Running RANDOM simulation (Baseline)...")
-    start_time = time.time()
-    random_avg_time = run_simulation(NUM_PATIENTS, agent=None, version_output="random_baseline", seed=42)
-    print(f"-> Finished in {time.time() - start_time:.2f}s. Average time: {random_avg_time:.2f} mins.")
-
-    # 2. Chạy mô phỏng với Model DRL
-    if os.path.exists(MODEL_PATH):
-        print(f"\n[2/2] Running DRL AGENT simulation from: {os.path.basename(MODEL_PATH)}")
-        # Tự động xác định agent class từ đường dẫn
-        algo_name = MODEL_PATH.split(os.sep)[-2]
-        if 'duel' in algo_name.lower(): agent = DuelingAgent(STATE_SIZE, ACTION_SIZE)
-        elif 'rainbow' in algo_name.lower(): agent = RainbowAgent(STATE_SIZE, ACTION_SIZE)
-        elif 'ddqn' in algo_name.lower(): agent = DDQNAgent(STATE_SIZE, ACTION_SIZE)
-        else: agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
-        
-        # Agent đã được set seed lúc khởi tạo, không cần set lại ở đây
-        agent.load(MODEL_PATH)
-        
-        start_time = time.time()
-        model_avg_time = run_simulation(NUM_PATIENTS, agent=agent, version_output="model_run", seed=99)
-        print(f"-> Finished in {time.time() - start_time:.2f}s. Average time: {model_avg_time:.2f} mins.")
-        
-        # 3. So sánh kết quả
-        print("\n--- COMPARISON ---")
-        print(f"Random Agent Avg Time: {random_avg_time:.2f} minutes")
-        print(f"DRL Agent Avg Time:    {model_avg_time:.2f} minutes")
-        improvement = ((random_avg_time - model_avg_time) / random_avg_time) * 100
-        print(f"Improvement: {improvement:+.2f}%")
+# --- HELPER FUNCTION: Tự động chọn class Agent ---
+def get_agent(algo_name, model_path, state_size, action_size):
+    algo_name = algo_name.lower()
+    if 'rainbow' in algo_name:
+        return RainbowAgent(state_size, action_size)
+    elif 'duel' in algo_name:
+        return DuelingAgent(state_size, action_size)
+    elif 'per' in algo_name:
+        return PerDqnAgent(state_size, action_size)
+    elif 'ddqn' in algo_name:
+        return DDQNAgent(state_size, action_size)
     else:
-        print(f"\n⚠️ Model file not found at '{MODEL_PATH}'. Skipping DRL agent simulation.")
+        # Mặc định là DQN
+        return DQNAgent(state_size, action_size)
+
+if __name__ == "__main__":
+    # 1. CẤU HÌNH CHẠY TEST
+    NUM_PATIENTS = 200        # Số bệnh nhân mỗi lần test
+    TEST_SEED = 42            # <--- QUAN TRỌNG: Cố định seed để công bằng
+    MODEL_FILENAME = "final_gen3.pth" # Tên file model bạn muốn test
+    
+    # Danh sách các thuật toán cần test (tên folder trong logs/)
+    ALGO_LIST = ["DQN", "DDQN", "Dueling", "PerDQN", "Rainbow"] 
+    
+    print(f"--- STARTING EVALUATION (SEED={TEST_SEED}) ---")
+
+    # 2. CHẠY RANDOM (BASELINE) - CHỈ CHẠY 1 LẦN VỚI SEED CỐ ĐỊNH
+    print(f"\n[BASELINE] Running Random Agent with Seed {TEST_SEED}...")
+    start_time = time.time()
+    # Lưu ý: Truyền seed vào đây để đảm bảo môi trường giống hệt các lần sau
+    random_avg_time = run_simulation(NUM_PATIENTS, agent=None, version_output="random_base", seed=TEST_SEED)
+    print(f"-> Random Avg Time: {random_avg_time:.2f} mins")
+
+    # 3. VÒNG LẶP TEST TỪNG MODEL
+    results = []
+    
+    for algo in ALGO_LIST:
+        model_path = os.path.join(ROOT_DIR, "logs", algo, MODEL_FILENAME)
+        
+        print(f"\n[{algo}] Testing model from: {model_path}")
+        
+        if not os.path.exists(model_path):
+            print(f"⚠️ File not found: {model_path}. Skipping...")
+            continue
+            
+        # Load Agent
+        try:
+            agent = get_agent(algo, model_path, STATE_SIZE, ACTION_SIZE)
+            agent.load(model_path)
+            
+            # Chạy Simulation với CÙNG MỘT SEED như Random
+            t0 = time.time()
+            model_avg_time = run_simulation(NUM_PATIENTS, agent=agent, version_output=algo.lower(), seed=TEST_SEED)
+            duration = time.time() - t0
+            
+            # Tính toán độ cải thiện
+            improvement = ((random_avg_time - model_avg_time) / random_avg_time) * 100
+            
+            print(f"-> {algo} Avg Time: {model_avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+            
+            results.append({
+                "Algorithm": algo,
+                "Avg Time (min)": model_avg_time,
+                "Improvement (%)": improvement,
+                "Real Time (s)": duration
+            })
+            
+        except Exception as e:
+            print(f"❌ Error testing {algo}: {e}")
+
+    # 4. TỔNG HỢP KẾT QUẢ
+    print("\n" + "="*40)
+    print(f"{'SUMMARY REPORT':^40}")
+    print("="*40)
+    print(f"Baseline (Random): {random_avg_time:.2f} mins")
+    print("-" * 40)
+    print(f"{'Algorithm':<10} | {'Time':<10} | {'Improve':<10}")
+    print("-" * 40)
+    
+    # Sắp xếp kết quả từ tốt nhất đến tệ nhất
+    results.sort(key=lambda x: x["Avg Time (min)"])
+    
+    for res in results:
+        print(f"{res['Algorithm']:<10} | {res['Avg Time (min)']:<10.2f} | {res['Improvement (%)']:<+8.2f}%")
+    print("="*40)

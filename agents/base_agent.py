@@ -39,7 +39,9 @@ class BaseAgent:
         self.tau = tau
         self.update_every = update_every
         self.n_step = n_step
-        self.seed = random.seed(seed)
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
         # Mặc định dùng Standard Net, Agent con (như Dueling) sẽ override dòng này
         self.qnetwork_local = StandardQNetwork(state_size, action_size, seed).to(DEVICE)

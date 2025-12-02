@@ -1,6 +1,6 @@
 pandas
 numpy
-pm4py
 simpy
-stable-baselines3
-gymnasium
+torch
+matplotlib
+tqdm

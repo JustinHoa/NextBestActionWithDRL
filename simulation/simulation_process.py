@@ -18,6 +18,7 @@ from agents.ddqn_agent import DDQNAgent
 from agents.dueling_agent import DuelingAgent
 from agents.rainbow_agent import RainbowAgent
 from agents.per_dqn_agent import PerDqnAgent
+from agents.multi_step_dqn_agent import MultiStepDqnAgent
 
 # --- CONFIG ---
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -237,6 +238,8 @@ def get_agent(algo_name, model_path, state_size, action_size):
         return DuelingAgent(state_size, action_size)
     elif 'per' in algo_name:
         return PerDqnAgent(state_size, action_size)
+    elif 'multistep' in algo_name:
+        return MultiStepDqnAgent(state_size, action_size)
     elif 'ddqn' in algo_name:
         return DDQNAgent(state_size, action_size)
     else:
@@ -250,7 +253,7 @@ if __name__ == "__main__":
     MODEL_FILENAME = "final_gen3.pth" # Tên file model bạn muốn test
     
     # Danh sách các thuật toán cần test (tên folder trong logs/)
-    ALGO_LIST = ["DQN", "DDQN", "Dueling", "PerDQN", "Rainbow"] 
+    ALGO_LIST = ["DQN", "DDQN", "Dueling", "PerDQN", "MultiStepDQN", "Rainbow"] 
     
     print(f"--- STARTING EVALUATION (SEED={TEST_SEED}) ---")
 

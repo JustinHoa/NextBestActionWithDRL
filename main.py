@@ -11,6 +11,7 @@ from agents.ddqn_agent import DDQNAgent
 from agents.dueling_agent import DuelingAgent
 from agents.rainbow_agent import RainbowAgent
 from agents.per_dqn_agent import PerDqnAgent
+from agents.multi_step_dqn_agent import MultiStepDqnAgent
 from common.env import FillBlanksEnv
 from common.utils import (
     ACTION_SIZE,
@@ -100,7 +101,7 @@ def train(agent, algo_name: str, version_id: int):
         print(f"\n🌍 Running simulation with new model to generate data for Gen {version_id + 1}...")
         run_simulation(num_patients=200, agent=agent, version_output=str(version_id), is_model_run=True)
 
-SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow"]
+SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN"]
 
 if __name__ == "__main__":
     # --- 1. Lấy tham số từ command line ---
@@ -111,6 +112,7 @@ if __name__ == "__main__":
         print("   python main.py DDQN")
         print("   python main.py Dueling")
         print("   python main.py Rainbow")
+        print("   python main.py MultiStepDQN")
         sys.exit(1)
 
     ALGO_TO_RUN = sys.argv[1].strip()
@@ -125,6 +127,8 @@ if __name__ == "__main__":
             return DuelingAgent(STATE_SIZE, ACTION_SIZE)
         if algo_name == "PerDQN":
             return PerDqnAgent(STATE_SIZE, ACTION_SIZE)
+        if algo_name == "MultiStepDQN":
+            return MultiStepDqnAgent(STATE_SIZE, ACTION_SIZE)
         if algo_name == "Rainbow":
             return RainbowAgent(STATE_SIZE, ACTION_SIZE)
         raise ValueError(f"Unknown algorithm: {algo_name}")

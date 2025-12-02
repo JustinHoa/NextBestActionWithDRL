@@ -170,8 +170,12 @@ class Patient:
         self.end_time = self.env.now
         self.center.finished_patient_count += 1
 
-def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False):
+def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False, seed=None):
     env = simpy.Environment() # type: ignore
+    # Cố định seed cho các thư viện ngẫu nhiên để đảm bảo tính lặp lại
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
     center = HealthCheckCenter(env)
     coord = Coordinator(agent, total_sim_time=1440)
     
@@ -232,12 +236,12 @@ if __name__ == "__main__":
     # 1. Chạy mô phỏng ngẫu nhiên (Baseline)
     print("\n[1/2] Running RANDOM simulation (Baseline)...")
     start_time = time.time()
-    random_avg_time = run_simulation(NUM_PATIENTS, agent=None, version_output="random_baseline")
+    random_avg_time = run_simulation(NUM_PATIENTS, agent=None, version_output="random_baseline", seed=42)
     print(f"-> Finished in {time.time() - start_time:.2f}s. Average time: {random_avg_time:.2f} mins.")
 
     # 2. Chạy mô phỏng với Model DRL
     if os.path.exists(MODEL_PATH):
-        print(f"\n[2/2] Running DRL AGENT simulation from: {MODEL_PATH}")
+        print(f"\n[2/2] Running DRL AGENT simulation from: {os.path.basename(MODEL_PATH)}")
         # Tự động xác định agent class từ đường dẫn
         algo_name = MODEL_PATH.split(os.sep)[-2]
         if 'duel' in algo_name.lower(): agent = DuelingAgent(STATE_SIZE, ACTION_SIZE)
@@ -245,10 +249,11 @@ if __name__ == "__main__":
         elif 'ddqn' in algo_name.lower(): agent = DDQNAgent(STATE_SIZE, ACTION_SIZE)
         else: agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
         
+        # Agent đã được set seed lúc khởi tạo, không cần set lại ở đây
         agent.load(MODEL_PATH)
         
         start_time = time.time()
-        model_avg_time = run_simulation(NUM_PATIENTS, agent=agent, version_output="model_run")
+        model_avg_time = run_simulation(NUM_PATIENTS, agent=agent, version_output="model_run", seed=99)
         print(f"-> Finished in {time.time() - start_time:.2f}s. Average time: {model_avg_time:.2f} mins.")
         
         # 3. So sánh kết quả

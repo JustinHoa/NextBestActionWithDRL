@@ -77,7 +77,7 @@ class Coordinator:
         
         # Encode Patient Info
         gender_code = 1 if patient.gender == "Male" else 0
-        marital_code = 1 if patient.marital_status == "Married" else 0
+        marital_code = 1 if patient.marital == "Married" else 0
         
         state = np.concatenate(([gender_code, marital_code], patient.prefix, norm_wait, norm_time))
         
@@ -104,6 +104,8 @@ class Patient:
         self.event_log = event_log # List to store logs
         self.prefix = np.zeros(21)
         self.lab_results = {"blood": -1, "urine": -1}
+        self.start_time = 0
+        self.end_time = 0
 
     def do_activity(self, activity_name):
         # Log Start
@@ -136,6 +138,7 @@ class Patient:
 
     def go_process(self, coordinator):
         # ... (Logic luồng đi khám giữ nguyên như cũ, chỉ rút gọn cho ngắn) ...
+        self.start_time = self.env.now
         # Định nghĩa Group
         CLUSTER_1 = ["Eye Examination", "ENT Examination", "Dental Examination", "Gynecological Examination", "Breast Examination"]
         CLUSTER_2 = ["Blood Test", "Urine Test", "General Ultrasound", "Cardiac Ultrasound", "Chest X-ray"]
@@ -164,6 +167,7 @@ class Patient:
             
         # 4. End Seq
         yield self.env.process(self.do_activity("Conclusion"))
+        self.end_time = self.env.now
         self.center.finished_patient_count += 1
 
 def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False):

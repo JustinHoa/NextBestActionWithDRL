@@ -23,7 +23,7 @@ from common.utils import (
 from simulation.simulation_process import run_simulation
 
 
-def train(algo_name: str, version_id: int):
+def train(agent, algo_name: str, version_id: int):
     """Hàm training chính cho một thế hệ."""
     config = TRAIN_CONFIG[version_id]
     log_dir = os.path.join("logs", algo_name)
@@ -36,7 +36,6 @@ def train(algo_name: str, version_id: int):
     print(f"{'='*60}\n")
 
     env = FillBlanksEnv(STATE_SIZE, ACTION_SIZE, data_path=config["data_file"])
-    agent = get_agent(algo_name)
 
     # Load model từ thế hệ trước (nếu có)
     if config["load_model"]:

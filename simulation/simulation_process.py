@@ -63,12 +63,12 @@ class Coordinator:
         self.agent = agent
         self.total_sim_time = total_sim_time
 
-    def predict(self, patient, current_queues_arr, current_time, candidates_names):
+    def predict(self, patient, current_queues_arr, current_time, candidates_names: list):
         candidate_indices = [name_to_id[name] - 1 for name in candidates_names]
         
         # Nếu không có agent, chọn ngẫu nhiên
         if self.agent is None:
-            return random.choice(candidates_names)
+            return random.choice(candidates_names) if candidates_names else None
 
         # Agent Logic
         raw_wait = (current_queues_arr * mean_times_arr) / staff_arr
@@ -167,17 +167,19 @@ class Patient:
         self.center.finished_patient_count += 1
 
 def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False):
-    env = simpy.Environment()
+    env = simpy.Environment() # type: ignore
     center = HealthCheckCenter(env)
     coord = Coordinator(agent, total_sim_time=1440)
     
     event_logs = []
     queue_logs = []
-    
+    patients_list = [] # Khởi tạo danh sách bệnh nhân ở đây
+
     # Generator
-    def patient_gen():
+    def patient_gen(patient_list_ref):
         for i in range(num_patients):
             p = Patient(env, center, i, random.choice(["Male", "Female"]), random.choice(["Single", "Married"]), event_logs)
+            patient_list_ref.append(p) # Thêm bệnh nhân vào danh sách được truyền vào
             env.process(p.go_process(coord))
             yield env.timeout(random.expovariate(1.0/2.0)) # Arrive every ~2 mins
 
@@ -189,16 +191,19 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
             queue_logs.append(status)
             yield env.timeout(1.0)
 
-    env.process(patient_gen())
+    env.process(patient_gen(patients_list)) # Truyền danh sách vào generator
     env.process(monitor())
     env.run()
 
-    # Chỉ lưu queue log nếu đây là lần chạy để sinh data cho thế hệ tiếp theo
-    if is_model_run:
+    # Lưu queue log nếu là lần chạy để sinh data cho thế hệ tiếp theo hoặc là lần chạy random đầu tiên
+    if is_model_run or agent is None:
         df_q = pd.DataFrame(queue_logs)
+        # Đảm bảo các cột được sắp xếp đúng thứ tự
+        cols = ['Time'] + [name for name in activity_names_list if name in df_q.columns]
+        df_q = df_q[cols]
         q_path = os.path.join(RAW_DATA_DIR, f"200_queue_log_version_{version_output}.csv")
         df_q.to_csv(q_path, index=False)
-        print(f"✅ Saved new QueueLog for next generation: {q_path}")
+        print(f"✅ Saved QueueLog: {q_path}")
 
     # Luôn lưu event log để đánh giá
     if len(event_logs) > 0:
@@ -210,7 +215,8 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
     print(f"✅ Simulation Version '{version_output}' finished.")
     
     # Trả về thời gian khám trung bình để so sánh
-    total_times = [p.end_time - p.start_time for p in env.process(patient_gen()) if p.end_time > 0]
+    # Tính toán thời gian từ danh sách bệnh nhân đã được thu thập
+    total_times = [p.end_time - p.start_time for p in patients_list if hasattr(p, 'end_time') and p.end_time > 0]
     return np.mean(total_times) if total_times else 0
 
 if __name__ == "__main__":

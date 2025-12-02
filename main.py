@@ -117,6 +117,19 @@ def train(algo_name: str, version_id: int):
         run_simulation(num_patients=200, agent=agent, version_output=str(version_id), is_model_run=True)
 
 if __name__ == "__main__":
+    # --- BƯỚC 0: KHỞI TẠO DỮ LIỆU NGẪU NHIÊN (nếu cần) ---
+    initial_data_path = os.path.join("data", "raw", "200_queue_log_version_0.csv")
+    if not os.path.exists(initial_data_path):
+        print("--- Initial data (version 0) not found. ---")
+        print("🌍 Running RANDOM simulation to generate initial queue log...")
+        run_simulation(
+            num_patients=200, 
+            agent=None,  # Chạy ở chế độ ngẫu nhiên
+            version_output="0", 
+            is_model_run=False # Chỉ sinh data, không phải model run
+        )
+        print("--- Initial data generated successfully. ---\n")
+
     print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] ---")
     train(ALGO_TO_RUN, 1)
     train(ALGO_TO_RUN, 2)

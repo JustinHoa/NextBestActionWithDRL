@@ -4,6 +4,7 @@ import sys
 import time
 import glob
 import shutil
+import random
 
 import numpy as np
 import torch
@@ -25,6 +26,57 @@ from common.utils import (
     plot_training_status,
 )
 from simulation.simulation_process import run_simulation
+
+# === REPRODUCIBILITY SETTINGS ===
+TRAIN_SEED = 123  # Fixed seed for training reproducibility
+EVAL_SEED = 42    # Fixed seed for evaluation/simulation
+
+def set_deterministic_mode():
+    """Set all random number generators to deterministic mode for reproducibility."""
+    # Set seeds for all RNG sources
+    random.seed(TRAIN_SEED)
+    np.random.seed(TRAIN_SEED)
+    torch.manual_seed(TRAIN_SEED)
+    
+    # GPU deterministic settings (if using CUDA)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed(TRAIN_SEED)
+        torch.cuda.manual_seed_all(TRAIN_SEED)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        # Note: This may reduce performance but ensures reproducibility
+    
+    print(f" Deterministic mode enabled with TRAIN_SEED={TRAIN_SEED}")
+
+def save_rng_state():
+    """Save current RNG states before simulation calls."""
+    return {
+        'random': random.getstate(),
+        'numpy': np.random.get_state(),
+        'torch': torch.get_rng_state(),
+        'torch_cuda': torch.cuda.get_rng_state_all() if torch.cuda.is_available() else None
+    }
+
+def restore_rng_state(state_dict):
+    """Restore RNG states after simulation calls to prevent interference."""
+    random.setstate(state_dict['random'])
+    np.random.set_state(state_dict['numpy'])
+    torch.set_rng_state(state_dict['torch'])
+    if torch.cuda.is_available() and state_dict['torch_cuda'] is not None:
+        torch.cuda.set_rng_state_all(state_dict['torch_cuda'])
+
+def run_simulation_isolated(num_patients, agent, version_output, is_model_run=False, seed=None):
+    """Run simulation with isolated RNG state to prevent training interference."""
+    # Save current training RNG state
+    training_state = save_rng_state()
+    
+    try:
+        # Run simulation with its own seed
+        result = run_simulation(num_patients, agent, version_output, is_model_run, seed)
+        return result
+    finally:
+        # Always restore training RNG state
+        restore_rng_state(training_state)
 
 
 def get_agent(algo_name: str):
@@ -80,7 +132,7 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
         ep = _extract_episode_from_ckpt_name(ckpt_path)
         agent = get_agent(algo_name)
         agent.load(ckpt_path)
-        avg_time = run_simulation(num_patients=200, agent=agent, version_output=f"eval_gen{gen_id}_ep{ep}", seed=seed)
+        avg_time = run_simulation_isolated(num_patients=200, agent=agent, version_output=f"eval_gen{gen_id}_ep{ep}", seed=seed)
         results.append((ep, ckpt_path, float(avg_time)))
         _append_note(log_dir, f"Checkpoint (ep={ep}): {avg_time:.2f}\n")
 
@@ -198,6 +250,9 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print(f"🚀 ALGO_TO_RUN = {ALGO_TO_RUN}\n")
+    
+    # === ENABLE DETERMINISTIC MODE FOR REPRODUCIBILITY ===
+    set_deterministic_mode()
 
     agent = get_agent(ALGO_TO_RUN)
 
@@ -224,7 +279,7 @@ if __name__ == "__main__":
     _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n")
 
     TEST_SEED = 42
-    baseline_avg_time = run_simulation(num_patients=200, agent=None, version_output="random_base", seed=TEST_SEED)
+    baseline_avg_time = run_simulation_isolated(num_patients=200, agent=None, version_output="random_base", seed=TEST_SEED)
 
     prev_best_avg_time = None
 
@@ -261,6 +316,6 @@ if __name__ == "__main__":
         if gen_id < 5 and (gen_id + 1) in TRAIN_CONFIG:
             agent_for_data = get_agent(ALGO_TO_RUN)
             agent_for_data.load(final_path)
-            run_simulation(num_patients=200, agent=agent_for_data, version_output=str(gen_id), is_model_run=True, seed=TEST_SEED)
+            run_simulation_isolated(num_patients=200, agent=agent_for_data, version_output=str(gen_id), is_model_run=True, seed=TEST_SEED)
 
     print("\n🎉🎉🎉 Training cycle finished! 🎉🎉🎉")

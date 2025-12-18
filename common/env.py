@@ -20,7 +20,7 @@ class FillBlanksEnv:
             raise FileNotFoundError(f"Could not find activity_info.json at {activity_info_path}")
 
         # Load Trace Data
-        print(f"📂 Env loading data: {data_path}")
+        print(f" Env loading data: {data_path}")
         try:
             df = pd.read_csv(data_path)
             full_trace = df.values
@@ -29,7 +29,7 @@ class FillBlanksEnv:
             else:
                 self.queue_trace = full_trace
         except Exception as e:
-            print(f"⚠️ Error loading trace: {e}. Using dummy data.")
+            print(f" Error loading trace: {e}. Using dummy data.")
             self.queue_trace = np.zeros((1058, 21))
 
         self.max_trace_len = len(self.queue_trace)
@@ -105,6 +105,9 @@ class FillBlanksEnv:
 
     def step(self, action):
         if self.done: return self._get_state(), 0.0, self.done
+
+        # Mask tại thời điểm ra quyết định (trước khi cập nhật blanks)
+        mask_before = self.get_action_mask()
         
         current_q = self.queues[action]
         time_action = round((current_q * self.mean_time_arr[action]) / self.staff_arr[action], 2)
@@ -126,7 +129,11 @@ class FillBlanksEnv:
             self.done = True
         else:
             all_wait = (self.queues * self.mean_time_arr) / self.staff_arr
-            avg_wait = np.mean(all_wait)
+            valid_idx = np.where(mask_before == 1.0)[0]
+            if len(valid_idx) > 0:
+                avg_wait = float(np.mean(all_wait[valid_idx]))
+            else:
+                avg_wait = float(np.mean(all_wait))
             reward = 0.1 * (avg_wait - time_action) - 0.1
             self.done = False
 

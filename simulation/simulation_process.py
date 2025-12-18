@@ -49,6 +49,25 @@ mean_times_arr = np.array(mean_times_arr)
 staff_arr = np.array(staff_arr)
 
 
+def _get_agent_tag(agent) -> str:
+    if agent is None:
+        return "Random"
+    return agent.__class__.__name__
+
+
+def _unique_csv_path(dir_path: str, filename: str) -> str:
+    base_path = os.path.join(dir_path, filename)
+    if not os.path.exists(base_path):
+        return base_path
+    stem, ext = os.path.splitext(filename)
+    i = 1
+    while True:
+        candidate = os.path.join(dir_path, f"{stem}_run{i}{ext}")
+        if not os.path.exists(candidate):
+            return candidate
+        i += 1
+
+
 # --- CLASSES ---
 class HealthCheckCenter:
     def __init__(self, env):
@@ -60,6 +79,7 @@ class HealthCheckCenter:
     def get_queue_status_array(self):
         return np.array([self.current_patient_count[name] for name in activity_names_list])
 
+
 class Coordinator:
     def __init__(self, agent=None, total_sim_time=1440):
         self.agent = agent
@@ -67,34 +87,35 @@ class Coordinator:
 
     def predict(self, patient, current_queues_arr, current_time, candidates_names: list):
         candidate_indices = [name_to_id[name] - 1 for name in candidates_names]
-        
+
         # Nếu không có agent, chọn ngẫu nhiên
         if self.agent is None:
             return random.choice(candidates_names) if candidates_names else None
 
         # Agent Logic
         raw_wait = (current_queues_arr * mean_times_arr) / staff_arr
-        norm_wait = raw_wait / 200.0 
+        norm_wait = raw_wait / 200.0
         norm_time = np.array([current_time / self.total_sim_time])
-        
+
         # Encode Patient Info
         gender_code = 1 if patient.gender == "Male" else 0
         marital_code = 1 if patient.marital == "Married" else 0
-        
+
         state = np.concatenate(([gender_code, marital_code], patient.prefix, norm_wait, norm_time))
-        
+
         # Create Mask
         mask = np.zeros(ACTION_SIZE)
         for idx in candidate_indices: mask[idx] = 1.0
-        
+
         # Agent Act (eps=0 for pure exploitation)
         action_idx = self.agent.act(state, mask, eps=0.0)
-        
+
         if action_idx not in candidate_indices:
             # Fallback an toàn: nếu agent chọn sai, chọn ngẫu nhiên từ các lựa chọn hợp lệ
             return random.choice(candidates_names)
-            
+
         return activity_names_list[action_idx]
+
 
 class Patient:
     def __init__(self, env, center, pid, gender, marital, event_log):
@@ -103,7 +124,7 @@ class Patient:
         self.id = pid
         self.gender = gender
         self.marital = marital
-        self.event_log = event_log # List to store logs
+        self.event_log = event_log  # List to store logs
         self.prefix = np.zeros(21)
         self.lab_results = {"blood": -1, "urine": -1}
         self.start_time = 0
@@ -112,29 +133,30 @@ class Patient:
     def do_activity(self, activity_name):
         # Log Start
         self.event_log.append({"CaseID": self.id, "Activity": activity_name, "Timestamp": self.env.now, "Lifecycle": "START"})
-        
+
         res = self.center.resources[activity_name]
         self.center.current_patient_count[activity_name] += 1
-        
+
         with res.request() as req:
             yield req
             # Processing time calculation
             data = activity_info[activity_name]
             if isinstance(data["mean_time"], dict):
-                 mean = (data["mean_time"]["Cash"] + data["mean_time"]["Credit"])/2
-            else: mean = data["mean_time"]
-            duration = random.triangular(mean*0.8, mean*1.2, mean)
-            
+                mean = (data["mean_time"]["Cash"] + data["mean_time"]["Credit"]) / 2
+            else:
+                mean = data["mean_time"]
+            duration = random.triangular(mean * 0.8, mean * 1.2, mean)
+
             yield self.env.timeout(duration)
-            
+
             # Lab results logic
             if activity_name == "Blood Test": self.lab_results["blood"] = self.env.now + 60
             if activity_name == "Urine Test": self.lab_results["urine"] = self.env.now + 45
-            
+
             idx = name_to_id[activity_name] - 1
             self.prefix[idx] = 1
             self.center.current_patient_count[activity_name] -= 1
-            
+
             # Log Complete
             self.event_log.append({"CaseID": self.id, "Activity": activity_name, "Timestamp": self.env.now, "Lifecycle": "COMPLETE"})
 
@@ -144,9 +166,9 @@ class Patient:
         # Định nghĩa Group
         CLUSTER_1 = ["Eye Examination", "ENT Examination", "Dental Examination", "Gynecological Examination", "Breast Examination"]
         CLUSTER_2 = ["Blood Test", "Urine Test", "General Ultrasound", "Cardiac Ultrasound", "Chest X-ray"]
-        
+
         # Filter candidates based on gender/marital
-        c1 = [a for a in CLUSTER_1 if not ((a=="Gynecological Examination" and (self.gender=="Male" or self.marital=="Single")) or (a=="Breast Examination" and self.gender=="Male"))]
+        c1 = [a for a in CLUSTER_1 if not ((a == "Gynecological Examination" and (self.gender == "Male" or self.marital == "Single")) or (a == "Breast Examination" and self.gender == "Male"))]
         c2 = list(CLUSTER_2)
 
         # 1. Start Seq
@@ -166,32 +188,33 @@ class Patient:
             act = coordinator.predict(self, q, self.env.now, c2)
             c2.remove(act)
             yield self.env.process(self.do_activity(act))
-            
+
         # 4. End Seq
         yield self.env.process(self.do_activity("Conclusion"))
         self.end_time = self.env.now
         self.center.finished_patient_count += 1
 
+
 def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False, seed=None):
-    env = simpy.Environment() # type: ignore
+    env = simpy.Environment()  # type: ignore
     # Cố định seed cho các thư viện ngẫu nhiên để đảm bảo tính lặp lại
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
     center = HealthCheckCenter(env)
     coord = Coordinator(agent, total_sim_time=1440)
-    
+
     event_logs = []
     queue_logs = []
-    patients_list = [] # Khởi tạo danh sách bệnh nhân ở đây
+    patients_list = []  # Khởi tạo danh sách bệnh nhân ở đây
 
     # Generator
     def patient_gen(patient_list_ref):
         for i in range(num_patients):
             p = Patient(env, center, i, random.choice(["Male", "Female"]), random.choice(["Single", "Married"]), event_logs)
-            patient_list_ref.append(p) # Thêm bệnh nhân vào danh sách được truyền vào
+            patient_list_ref.append(p)  # Thêm bệnh nhân vào danh sách được truyền vào
             env.process(p.go_process(coord))
-            yield env.timeout(random.expovariate(1.0/2.0)) # Arrive every ~2 mins
+            yield env.timeout(random.expovariate(1.0 / 2.0))  # Arrive every ~2 mins
 
     # Monitor
     def monitor():
@@ -201,9 +224,11 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
             queue_logs.append(status)
             yield env.timeout(1.0)
 
-    env.process(patient_gen(patients_list)) # Truyền danh sách vào generator
+    env.process(patient_gen(patients_list))  # Truyền danh sách vào generator
     env.process(monitor())
     env.run()
+
+    agent_tag = _get_agent_tag(agent)
 
     # Lưu queue log nếu là lần chạy để sinh data cho thế hệ tiếp theo hoặc là lần chạy random đầu tiên
     if is_model_run or agent is None:
@@ -218,12 +243,13 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
     # Luôn lưu event log để đánh giá
     if len(event_logs) > 0:
         df_e = pd.DataFrame(event_logs)
-        e_path = os.path.join(EVAL_DATA_DIR, f"event_log_version_{version_output}.csv")
+        e_filename = f"event_log_{agent_tag}_version_{version_output}.csv"
+        e_path = _unique_csv_path(EVAL_DATA_DIR, e_filename)
         df_e.to_csv(e_path, index=False)
         print(f"✅ Saved EventLog for evaluation: {e_path}")
-    
+
     print(f"✅ Simulation Version '{version_output}' finished.")
-    
+
     # Trả về thời gian khám trung bình để so sánh
     # Tính toán thời gian từ danh sách bệnh nhân đã được thu thập
     total_times = [p.end_time - p.start_time for p in patients_list if hasattr(p, 'end_time') and p.end_time > 0]

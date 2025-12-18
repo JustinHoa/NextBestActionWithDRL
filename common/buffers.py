@@ -63,7 +63,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         seed: int = 0,
         alpha: float = 0.6,
         beta_start: float = 0.5,
-        beta_frames: int = 100_000,
+        beta_frames: int = 30_000,
         eps: float = 1e-6,
     ):
         super().__init__(buffer_size, batch_size, seed)
@@ -143,6 +143,13 @@ class MultiStepBuffer:
         state, action, _, _, _, _ = self.n_step_queue[0]
         self.base_buffer.add(state, action, reward, next_state, done, next_mask)
 
+        # Trượt cửa sổ n-step
+        self.n_step_queue.popleft()
+
+        # Nếu episode kết thúc, cần flush phần còn lại (n-1 transition cuối)
+        if args[4]:  # done
+            self._flush_queue()
+
     def _flush_queue(self) -> None:
         """Xả hết các experience còn lại trong queue khi hết episode."""
         while self.n_step_queue:
@@ -154,18 +161,18 @@ class MultiStepBuffer:
     def _get_n_step_info(self):
         """Tính toán cumulative reward và lấy (next_state, done) của n bước sau."""
         cumulative_reward = 0.0
-        
-        # Lấy next_state, done, next_mask từ experience cuối cùng trong queue
-        _, _, _, final_next_state, final_done, final_next_mask = self.n_step_queue[-1]
 
-        # Tính cumulative discounted reward
-        for i, (_, _, r, _, done, _) in enumerate(self.n_step_queue):
+        # Mặc định lấy thông tin từ phần tử cuối (n bước sau)
+        _, _, _, next_state, done, next_mask = self.n_step_queue[-1]
+
+        # Nếu gặp 'done' giữa chừng, phải dùng next_state/done/next_mask tại đúng bước đó
+        for i, (_, _, r, ns, d, nm) in enumerate(self.n_step_queue):
             cumulative_reward += (self.gamma ** i) * r
-            if done:
-                # Nếu gặp 'done' giữa chừng, các reward sau đó không được tính
+            if d:
+                next_state, done, next_mask = ns, d, nm
                 break
-        
-        return cumulative_reward, final_next_state, final_done, final_next_mask
+
+        return cumulative_reward, next_state, done, next_mask
 
     def sample(self):
         """Lấy mẫu từ buffer cơ sở."""

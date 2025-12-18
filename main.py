@@ -1,6 +1,9 @@
 import os
 from collections import deque
 import sys
+import time
+import glob
+import shutil
 
 import numpy as np
 import torch
@@ -24,21 +27,85 @@ from common.utils import (
 from simulation.simulation_process import run_simulation
 
 
-def train(agent, algo_name: str, version_id: int):
-    """Hàm training chính cho một thế hệ."""
-    config = TRAIN_CONFIG[version_id]
+def get_agent(algo_name: str):
+    """Factory function để lấy agent tương ứng."""
+    if algo_name == "DQN":
+        return DQNAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "DDQN":
+        return DDQNAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "Dueling":
+        return DuelingAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "PerDQN":
+        return PerDqnAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "MultiStepDQN":
+        return MultiStepDqnAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "Rainbow":
+        return RainbowAgent(STATE_SIZE, ACTION_SIZE)
+    raise ValueError(f"Unknown algorithm: {algo_name}")
+
+
+def _append_note(log_dir: str, text: str) -> None:
+    ensure_dir(log_dir)
+    note_path = os.path.join(log_dir, "training_notes.txt")
+    with open(note_path, "a", encoding="utf-8") as f:
+        f.write(text)
+
+
+def _extract_episode_from_ckpt_name(filename: str) -> int:
+    base = os.path.basename(filename)
+    try:
+        ep_part = base.split("_ep", 1)[1]
+        return int(ep_part.split(".pth", 1)[0])
+    except Exception:
+        return -1
+
+
+def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, baseline_avg_time: float):
+    pattern = os.path.join(log_dir, f"checkpoint_v{gen_id}_ep*.pth")
+    ckpt_paths = sorted(glob.glob(pattern), key=_extract_episode_from_ckpt_name)
+    if not ckpt_paths:
+        raise RuntimeError(f"No checkpoints found for Gen {gen_id} at: {pattern}")
+
+    results = []
+    best = None
+
+    _append_note(
+        log_dir,
+        f"\nGen {gen_id}:\n"
+        f"Simulation Process Avg Time:\n"
+        f"Random (Baseline): {baseline_avg_time:.2f}\n",
+    )
+
+    for ckpt_path in ckpt_paths:
+        ep = _extract_episode_from_ckpt_name(ckpt_path)
+        agent = get_agent(algo_name)
+        agent.load(ckpt_path)
+        avg_time = run_simulation(num_patients=200, agent=agent, version_output=f"eval_gen{gen_id}_ep{ep}", seed=seed)
+        results.append((ep, ckpt_path, float(avg_time)))
+        _append_note(log_dir, f"Checkpoint (ep={ep}): {avg_time:.2f}\n")
+
+        if best is None or avg_time < best[2]:
+            best = (ep, ckpt_path, float(avg_time))
+
+    assert best is not None
+    _append_note(log_dir, f"=> Choose Checkpoint (ep={best[0]}) for Gen {gen_id}.\n")
+    return best, results
+
+
+def train_one_generation(agent, algo_name: str, gen_id: int):
+    """Train một thế hệ và trả về danh sách checkpoint paths được tạo ra."""
+    config = TRAIN_CONFIG[gen_id]
     log_dir = os.path.join("logs", algo_name)
     ensure_dir(log_dir)
 
     print(f"\n{'='*60}")
-    print(f"🚀 STARTING TRAINING: [{algo_name}] - VERSION {version_id}")
+    print(f"🚀 STARTING TRAINING: [{algo_name}] - GEN {gen_id}")
     print(f"   Description: {config['description']}")
     print(f"   Data: {config['data_file']}")
     print(f"{'='*60}\n")
 
     env = FillBlanksEnv(STATE_SIZE, ACTION_SIZE, data_path=config["data_file"])
 
-    # Load model từ thế hệ trước (nếu có)
     if config["load_model"]:
         load_path = os.path.join(log_dir, config["load_model"])
         if os.path.exists(load_path):
@@ -47,27 +114,26 @@ def train(agent, algo_name: str, version_id: int):
         else:
             print(f"⚠️ Warning: Model file not found at {load_path}. Training from scratch.")
 
-    # Cập nhật learning rate
     for param_group in agent.optimizer.param_groups:
         param_group["lr"] = config["lr"]
 
     scores_window = deque(maxlen=100)
     all_scores, all_losses = [], []
     eps = config["eps_start"]
-
-    # Rainbow không dùng epsilon
     use_epsilon = not isinstance(agent, RainbowAgent)
 
-    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training V{version_id}")
+    ckpt_paths = []
+    t0 = time.time()
+
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training Gen {gen_id}")
     for i_episode in tqdm_bar:
         state = env.reset()
         score = 0
-        for _ in range(30):  # Max steps per episode
+        for _ in range(30):
             mask = env.get_action_mask()
-            
             current_eps = eps if use_epsilon else 0.0
             action = agent.act(state, mask, current_eps)
-            
+
             next_state, reward, done = env.step(action)
             next_mask = env.get_action_mask()
 
@@ -88,18 +154,26 @@ def train(agent, algo_name: str, version_id: int):
         if i_episode % 100 == 0:
             tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
 
-    # Lưu model cuối cùng
-    save_path = os.path.join(log_dir, config["save_name"])
-    agent.save(save_path)
+        if i_episode % 1000 == 0:
+            ckpt_name = f"checkpoint_v{gen_id}_ep{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
 
-    # Vẽ biểu đồ cuối cùng
-    plot_training_status(all_scores, all_losses, algo_name, version_id, save_dir=log_dir)
-    print(f"\n✅ Finished Version {version_id}. Model saved to {save_path}")
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
 
-    # Chạy simulation để sinh data cho thế hệ tiếp theo
-    if version_id < 3:
-        print(f"\n🌍 Running simulation with new model to generate data for Gen {version_id + 1}...")
-        run_simulation(num_patients=200, agent=agent, version_output=str(version_id), is_model_run=True)
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir)
+
+    _append_note(
+        log_dir,
+        f"Episode: {config['episodes']} episode\n"
+        f"Training Time: {train_minutes:.2f} minutes\n",
+    )
+
+    return ckpt_paths
+
 
 SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN"]
 
@@ -116,22 +190,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     ALGO_TO_RUN = sys.argv[1].strip()
-
-    def get_agent(algo_name: str):
-        """Factory function để lấy agent tương ứng."""
-        if algo_name == "DQN":
-            return DQNAgent(STATE_SIZE, ACTION_SIZE)
-        if algo_name == "DDQN":
-            return DDQNAgent(STATE_SIZE, ACTION_SIZE)
-        if algo_name == "Dueling":
-            return DuelingAgent(STATE_SIZE, ACTION_SIZE)
-        if algo_name == "PerDQN":
-            return PerDqnAgent(STATE_SIZE, ACTION_SIZE)
-        if algo_name == "MultiStepDQN":
-            return MultiStepDqnAgent(STATE_SIZE, ACTION_SIZE)
-        if algo_name == "Rainbow":
-            return RainbowAgent(STATE_SIZE, ACTION_SIZE)
-        raise ValueError(f"Unknown algorithm: {algo_name}")
 
     # --- 2. Kiểm tra thuật toán hợp lệ ---
     if ALGO_TO_RUN not in SUPPORTED_ALGOS:
@@ -159,11 +217,50 @@ if __name__ == "__main__":
 
         print("--- Initial data generated successfully. ---\n")
 
-    # --- 4. Chạy đầy đủ 3 thế hệ training ---
     print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] ---")
 
-    train(agent, ALGO_TO_RUN, 1)
-    train(agent, ALGO_TO_RUN, 2)
-    train(agent, ALGO_TO_RUN, 3)
+    log_dir = os.path.join("logs", ALGO_TO_RUN)
+    ensure_dir(log_dir)
+    _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n")
 
-    print("\n🎉🎉🎉 All training generations completed! 🎉🎉🎉")
+    TEST_SEED = 42
+    baseline_avg_time = run_simulation(num_patients=200, agent=None, version_output="random_base", seed=TEST_SEED)
+
+    prev_best_avg_time = None
+
+    for gen_id in range(1, 6):
+        if gen_id not in TRAIN_CONFIG:
+            break
+
+        ckpt_paths = train_one_generation(agent, ALGO_TO_RUN, gen_id)
+
+        best, _ = _evaluate_checkpoints(
+            algo_name=ALGO_TO_RUN,
+            gen_id=gen_id,
+            log_dir=log_dir,
+            seed=TEST_SEED,
+            baseline_avg_time=baseline_avg_time,
+        )
+
+        best_ep, best_ckpt_path, best_avg_time = best
+        final_name = TRAIN_CONFIG[gen_id]["save_name"]
+        final_path = os.path.join(log_dir, final_name)
+        shutil.copyfile(best_ckpt_path, final_path)
+        _append_note(log_dir, f"Final Model: {final_name} (from ep={best_ep}) | Avg Time: {best_avg_time:.2f}\n")
+
+        if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
+            _append_note(
+                log_dir,
+                f"STOP: Gen {gen_id} Avg Time ({best_avg_time:.2f}) >= Gen {gen_id - 1} Avg Time ({prev_best_avg_time:.2f})\n",
+            )
+            print(f"🛑 STOP: Gen {gen_id} did not improve over Gen {gen_id - 1}.")
+            break
+
+        prev_best_avg_time = best_avg_time
+
+        if gen_id < 5 and (gen_id + 1) in TRAIN_CONFIG:
+            agent_for_data = get_agent(ALGO_TO_RUN)
+            agent_for_data.load(final_path)
+            run_simulation(num_patients=200, agent=agent_for_data, version_output=str(gen_id), is_model_run=True, seed=TEST_SEED)
+
+    print("\n🎉🎉🎉 Training cycle finished! 🎉🎉🎉")

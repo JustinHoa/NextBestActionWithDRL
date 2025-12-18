@@ -4,7 +4,7 @@
 # Gender = 0, Marital Status = 0
     # 6 + (2**4 - 1) + (2**10 - 1) = 1044
 # Gender = 0, Marital Status = 1
-    # 6 + (2**5 - 1) + (2**10 - 1) = 1040
+    # 6 + (2**5 - 1) + (2**10 - 1) = 1060
 # -> Tổng: 4176
 # Bỏ đi goal state.
 

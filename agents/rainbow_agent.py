@@ -24,7 +24,7 @@ class RainbowAgent(BaseAgent):
             action_size,
             seed,
             use_per=True,      # Bật Prioritized Replay
-            n_step=3,          # Bật Multi-step learning (3 bước)
+            n_step=1,          # Bật Multi-step learning (3 bước), thử loại bỏ multistep. 
         )
 
         # Override mạng mặc định bằng RainbowQNetwork (Dueling + Noisy)
@@ -36,6 +36,11 @@ class RainbowAgent(BaseAgent):
     def learn(self, experiences, gamma):
         # Unpack experiences từ PER
         states, actions, rewards, next_states, dones, next_masks, weights, indices = experiences
+
+        if hasattr(self.qnetwork_local, "reset_noise"):
+            self.qnetwork_local.reset_noise()
+        if hasattr(self.qnetwork_target, "reset_noise"):
+            self.qnetwork_target.reset_noise()
 
         # Logic của Double DQN
         with torch.no_grad():

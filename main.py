@@ -256,22 +256,6 @@ if __name__ == "__main__":
 
     agent = get_agent(ALGO_TO_RUN)
 
-    # --- 3. Kiểm tra file dữ liệu ban đầu ---
-    initial_data_path = os.path.join("data", "raw", "200_queue_log_version_0.csv")
-
-    if not os.path.exists(initial_data_path):
-        print("--- Initial data (version 0) not found. ---")
-        print("🌍 Running RANDOM simulation to generate initial queue log...")
-
-        run_simulation(
-            num_patients=200,
-            agent=None,             # Random mode
-            version_output="0",
-            is_model_run=False
-        )
-
-        print("--- Initial data generated successfully. ---\n")
-
     print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] ---")
 
     log_dir = os.path.join("logs", ALGO_TO_RUN)

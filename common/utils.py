@@ -1,6 +1,7 @@
 import os
+import copy
 import pickle
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,7 +13,7 @@ STATE_SIZE = 45
 ACTION_SIZE = 21
 
 # --- TRAINING CONFIG ---
-TRAIN_CONFIG = {
+_BASE_TRAIN_CONFIG = {
     1: {
         "description": "Gen 1 - Train from scratch on random data",
         "data_file": "data/raw/200_queue_log_version_random_base.csv",
@@ -69,6 +70,19 @@ TRAIN_CONFIG = {
         "save_name": "final_gen5.pth",
     },
 }
+
+TRAIN_CONFIGS = {
+    "DQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "DDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "Dueling": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "PerDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "MultiStepDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "Rainbow": copy.deepcopy(_BASE_TRAIN_CONFIG),
+}
+
+
+def get_train_config(algo_name: str) -> Dict[int, Dict[str, object]]:
+    return TRAIN_CONFIGS[algo_name]
 
 
 def ensure_dir(path: str) -> None:

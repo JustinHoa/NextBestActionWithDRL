@@ -17,7 +17,7 @@ _BASE_TRAIN_CONFIG = {
     1: {
         "description": "Gen 1 - Train from scratch on random data",
         "data_file": "data/raw/200_queue_log_version_random_base.csv",
-        "episodes": 6000,
+        "episodes": 3000, # 6000
         "lr": 1e-4,
         "eps_start": 1.0,
         "eps_decay": 0.9994,
@@ -28,7 +28,7 @@ _BASE_TRAIN_CONFIG = {
     2: {
         "description": "Gen 2 - Fine-tune on Gen 1 agent's data",
         "data_file": "data/raw/200_queue_log_version_1.csv",
-        "episodes": 10000,
+        "episodes": 2000, # 10 000
         "lr": 3e-5,
         "eps_start": 0.5,
         "eps_decay": 0.9994,
@@ -81,8 +81,28 @@ TRAIN_CONFIGS = {
 }
 
 
-def get_train_config(algo_name: str) -> Dict[int, Dict[str, object]]:
-    return TRAIN_CONFIGS[algo_name]
+def get_train_config(algo_name: str, num_patients: int = 200) -> Dict[int, Dict[str, object]]:
+    """Get training config with dynamic paths based on num_patients."""
+    config = copy.deepcopy(TRAIN_CONFIGS[algo_name])
+    
+    # Update data_file, load_model, and save_name to use num_patients
+    for gen_id in config:
+        # Update data_file
+        if gen_id == 1:
+            config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_random_base.csv"
+        else:
+            prev_gen = gen_id - 1
+            config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{algo_name}_gen_{prev_gen}.csv"
+        
+        # Update load_model
+        if config[gen_id]["load_model"] is not None:
+            prev_gen = gen_id - 1
+            config[gen_id]["load_model"] = f"final_{num_patients}_gen_{prev_gen}.pth"
+        
+        # Update save_name
+        config[gen_id]["save_name"] = f"final_{num_patients}_gen_{gen_id}.pth"
+    
+    return config
 
 
 def ensure_dir(path: str) -> None:
@@ -112,7 +132,8 @@ def plot_training_status(
     losses: List[float],
     algo_name: str,
     version_id: int,
-    save_dir: str
+    save_dir: str,
+    num_patients: int = 200
 ) -> None:
     """Vẽ và lưu biểu đồ training (reward và loss)."""
     if not scores or not losses:
@@ -146,7 +167,7 @@ def plot_training_status(
     plt.legend()
     plt.grid(alpha=0.3)
 
-    plot_path = os.path.join(save_dir, f"monitoring_v{version_id}_final.png")
+    plot_path = os.path.join(save_dir, f"monitoring_{num_patients}_gen_{version_id}.png")
     plt.tight_layout()
     plt.savefig(plot_path)
     plt.close()

@@ -3,7 +3,6 @@ from typing import Dict, Optional
 
 import numpy as np
 
-
 class LearningToActAgent:
     def __init__(self, state_size: int, action_size: int, policy: Optional[Dict[int, int]] = None):
         self.state_size = state_size

@@ -195,7 +195,7 @@ class Patient:
         self.center.finished_patient_count += 1
 
 
-def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False, seed=None):
+def run_simulation(num_patients=200, agent=None, version_output="0", is_model_run=False, seed=None, model_name="", gen_id=0):
     env = simpy.Environment()  # type: ignore
     # Cố định seed cho các thư viện ngẫu nhiên để đảm bảo tính lặp lại
     if seed is not None:
@@ -229,6 +229,17 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
     env.run()
 
     agent_tag = _get_agent_tag(agent)
+    
+    # Determine model name for file naming
+    if model_name:
+        file_model_name = model_name
+    else:
+        file_model_name = agent_tag if agent_tag != "Random" else "Random"
+
+    # Special handling for random_base
+    is_random_base = (version_output == "random_base")
+    # Special handling for FORLAPS and LearningToAct (no gen_id in filename)
+    is_offline_model = (version_output in ["forlaps", "learningtoact"])
 
     # Lưu queue log nếu là lần chạy để sinh data cho thế hệ tiếp theo hoặc là lần chạy random đầu tiên
     if is_model_run or agent is None:
@@ -236,14 +247,29 @@ def run_simulation(num_patients=200, agent=None, version_output="0", is_model_ru
         # Đảm bảo các cột được sắp xếp đúng thứ tự
         cols = ['Time'] + [name for name in activity_names_list if name in df_q.columns]
         df_q = df_q[cols]
-        q_path = os.path.join(RAW_DATA_DIR, f"200_queue_log_version_{version_output}.csv")
+        if is_random_base:
+            q_path = os.path.join(RAW_DATA_DIR, f"queue_log_{num_patients}_random_base.csv")
+        elif is_offline_model:
+            q_path = os.path.join(RAW_DATA_DIR, f"queue_log_{num_patients}_{file_model_name}.csv")
+        else:
+            q_path = os.path.join(RAW_DATA_DIR, f"queue_log_{num_patients}_{file_model_name}_gen_{gen_id}.csv")
         df_q.to_csv(q_path, index=False)
         print(f"✅ Saved QueueLog: {q_path}")
 
     # Luôn lưu event log để đánh giá
     if len(event_logs) > 0:
         df_e = pd.DataFrame(event_logs)
-        e_filename = f"event_log_{agent_tag}_version_{version_output}.csv"
+        if is_random_base:
+            e_filename = f"event_log_{num_patients}_random_base.csv"
+        else:
+            # Parse checkpoint number from version_output if it contains checkpoint info
+            checkpoint_num = 0
+            if "ep" in version_output:
+                import re
+                match = re.search(r'ep(\d+)', version_output)
+                if match:
+                    checkpoint_num = int(match.group(1))
+            e_filename = f"event_log_{num_patients}_{file_model_name}_gen_{gen_id}_checkpoint_{checkpoint_num}.csv"
         e_path = _unique_csv_path(EVAL_DATA_DIR, e_filename)
         df_e.to_csv(e_path, index=False)
         print(f"✅ Saved EventLog for evaluation: {e_path}")

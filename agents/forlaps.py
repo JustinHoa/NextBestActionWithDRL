@@ -30,17 +30,17 @@ def _restore_rng_state(state_dict):
         torch.cuda.set_rng_state_all(state_dict["torch_cuda"])
 
 
-def _run_simulation_isolated(num_patients, agent, version_output, is_model_run=False, seed=None):
+def _run_simulation_isolated(num_patients, agent, version_output, is_model_run=False, seed=None, model_name="", gen_id=0):
     training_state = _save_rng_state()
     try:
-        return run_simulation(num_patients, agent, version_output, is_model_run, seed)
+        return run_simulation(num_patients, agent, version_output, is_model_run, seed, model_name, gen_id)
     finally:
         _restore_rng_state(training_state)
 
 
-def _append_note(log_dir: str, text: str) -> None:
+def _append_note(log_dir: str, text: str, num_patients: int = 200) -> None:
     ensure_dir(log_dir)
-    note_path = os.path.join(log_dir, "training_notes.txt")
+    note_path = os.path.join(log_dir, f"training_notes_{num_patients}.txt")
     with open(note_path, "a", encoding="utf-8") as f:
         f.write(text)
 
@@ -175,7 +175,7 @@ def run_forlaps_once(
     epochs: int = 10,
     batch_size: int = 256,
     gamma: float = 0.99,
-):
+) -> Tuple[List[float], float, float]:
     """Entry point for offline FORLAPS benchmark.
 
     Runs: offline dataset -> augmentation -> offline Q-learning -> save -> simulation.
@@ -183,11 +183,11 @@ def run_forlaps_once(
     algo_name = "FORLAPS"
     log_dir = os.path.join("logs", algo_name)
     ensure_dir(log_dir)
-    _append_note(log_dir, "\n=== Train model: FORLAPS (offline) ===\n")
+    _append_note(log_dir, "\n=== Train model: FORLAPS ===\n", num_patients)
 
-    random_queue_log = os.path.join("data", "raw", "200_queue_log_version_random_base.csv")
+    random_queue_log = os.path.join("data", "raw", f"queue_log_{num_patients}_random_base.csv")
     if not os.path.exists(random_queue_log):
-        _append_note(log_dir, "Random queue log missing; generating via simulation.\n")
+        _append_note(log_dir, "Random queue log missing; generating via simulation.\n", num_patients)
         _run_simulation_isolated(num_patients=num_patients, agent=None, version_output="random_base", seed=eval_seed)
 
     offline_dir = os.path.join("data", "offline")
@@ -203,9 +203,9 @@ def run_forlaps_once(
             seed=train_seed,
         )
         _save_pickle(offline_path, transitions)
-        _append_note(log_dir, f"Saved offline transitions: {offline_path} | n={len(transitions)}\n")
+        _append_note(log_dir, f"Saved offline transitions: {offline_path} | n={len(transitions)}\n", num_patients)
     else:
-        _append_note(log_dir, f"Loaded offline transitions: {offline_path} | n={len(transitions)}\n")
+        _append_note(log_dir, f"Loaded offline transitions: {offline_path} | n={len(transitions)}\n", num_patients)
 
     augmented = _augment_transitions_forlaps(
         transitions,
@@ -214,12 +214,15 @@ def run_forlaps_once(
         deletion_ratio=0.05,
         seed=train_seed,
     )
-    _append_note(log_dir, f"Augmented transitions: n={len(augmented)}\n")
+    _append_note(log_dir, f"Augmented transitions: n={len(augmented)}\n", num_patients)
 
     agent = DQNAgent(STATE_SIZE, ACTION_SIZE)
     for param_group in agent.optimizer.param_groups:
         param_group["lr"] = 1e-4
 
+    import time as time_module
+    t0 = time_module.time()
+    
     losses = _offline_train_dqn_from_transitions(
         agent=agent,
         transitions=augmented,
@@ -228,11 +231,13 @@ def run_forlaps_once(
         gamma=gamma,
         seed=train_seed,
     )
+    
+    train_seconds = time_module.time() - t0
+    train_minutes = train_seconds / 60.0
 
-    model_path = os.path.join(log_dir, "final.pth")
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
     agent.save(model_path)
-    _append_note(log_dir, f"Saved FORLAPS model: {model_path}\n")
-    _append_note(log_dir, f"Offline losses (epoch means): {losses}\n")
+    _append_note(log_dir, f"Saved FORLAPS model: {model_path}\n", num_patients)
 
     baseline_avg_time = _run_simulation_isolated(
         num_patients=num_patients,
@@ -240,15 +245,38 @@ def run_forlaps_once(
         version_output="random_base",
         seed=eval_seed,
     )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    _append_note(log_dir, f"Episode: {num_episodes} episode\n", num_patients)
+    _append_note(log_dir, f"Training Time: {train_minutes:.2f} minutes\n", num_patients)
+    
     avg_time = _run_simulation_isolated(
         num_patients=num_patients,
         agent=agent,
         version_output="forlaps",
-        is_model_run=False,
+        is_model_run=True,
         seed=eval_seed,
+        model_name="FORLAPS",
+        gen_id=0,
     )
 
     improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
-    _append_note(log_dir, f"Baseline Avg Time: {baseline_avg_time:.2f}\n")
-    _append_note(log_dir, f"FORLAPS Avg Time: {avg_time:.2f} | Improvement: {improvement:+.2f}%\n")
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
     print(f"FORLAPS Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+    
+    # Plot monitoring
+    import matplotlib.pyplot as plt
+    plt.figure(figsize=(10, 5))
+    plt.plot(losses, label='Loss')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.title(f'FORLAPS Training - {num_patients} patients')
+    plt.legend()
+    plt.grid(True)
+    plot_path = os.path.join(log_dir, f"monitoring_{num_patients}.png")
+    plt.savefig(plot_path)
+    plt.close()
+    print(f"📊 Saved monitoring plot: {plot_path}")
+    
+    return losses, baseline_avg_time, avg_time

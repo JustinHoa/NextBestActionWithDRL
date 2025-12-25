@@ -69,14 +69,14 @@ def restore_rng_state(state_dict):
     if torch.cuda.is_available() and state_dict['torch_cuda'] is not None:
         torch.cuda.set_rng_state_all(state_dict['torch_cuda'])
 
-def run_simulation_isolated(num_patients, agent, version_output, is_model_run=False, seed=None):
+def run_simulation_isolated(num_patients, agent, version_output, is_model_run=False, seed=None, model_name="", gen_id=0):
     """Run simulation with isolated RNG state to prevent training interference."""
     # Save current training RNG state
     training_state = save_rng_state()
     
     try:
         # Run simulation with its own seed
-        result = run_simulation(num_patients, agent, version_output, is_model_run, seed)
+        result = run_simulation(num_patients, agent, version_output, is_model_run, seed, model_name, gen_id)
         return result
     finally:
         # Always restore training RNG state
@@ -207,7 +207,7 @@ def _mc_policy_from_event_log(
     return policy
 
 
-def run_learning_to_act_once():
+def run_learning_to_act_once(num_patients: int = 200):
     """Entry point for: python main.py LearningToAct
 
     Offline-only: learn policy from baseline event log (random) via Monte Carlo,
@@ -216,50 +216,60 @@ def run_learning_to_act_once():
     algo_name = "LearningToAct"
     log_dir = os.path.join("logs", algo_name)
     ensure_dir(log_dir)
-    _append_note(log_dir, "\n=== Train model: LearningToAct (offline MC policy) ===\n")
+    _append_note(log_dir, "\n=== Train model: LearningToAct ===\n", num_patients)
 
     # 1) Ensure baseline random queue log exists (used by FillBlanksEnv in other parts)
-    random_queue_log = os.path.join("data", "raw", "200_queue_log_version_random_base.csv")
+    random_queue_log = os.path.join("data", "raw", f"queue_log_{num_patients}_random_base.csv")
     if not os.path.exists(random_queue_log):
-        _append_note(log_dir, "Random queue log missing; generating via simulation.\n")
-        run_simulation_isolated(num_patients=200, agent=None, version_output="random_base", seed=EVAL_SEED)
+        _append_note(log_dir, "Random queue log missing; generating via simulation.\n", num_patients)
+        run_simulation_isolated(num_patients=num_patients, agent=None, version_output="random_base", seed=EVAL_SEED, model_name="Random", gen_id=0)
 
     # 2) Ensure baseline event log exists
-    event_log_path = os.path.join("data", "evaluate", "event_log_version_random_base.csv")
+    event_log_path = os.path.join("data", "evaluate", f"event_log_{num_patients}_random_base.csv")
     if not os.path.exists(event_log_path):
-        _append_note(log_dir, "Baseline event log missing; generating via simulation.\n")
-        run_simulation_isolated(num_patients=200, agent=None, version_output="random_base", seed=EVAL_SEED)
+        _append_note(log_dir, "Baseline event log missing; generating via simulation.\n", num_patients)
+        run_simulation_isolated(num_patients=num_patients, agent=None, version_output="random_base", seed=EVAL_SEED, model_name="Random", gen_id=0)
 
     # 3) Offline MC policy learning
+    t0 = time.time()
     policy = _mc_policy_from_event_log(event_log_path, gamma=0.99, min_visits=1)
-    _append_note(log_dir, f"Learned policy states: {len(policy)}\n")
-
-    policy_path = os.path.join(log_dir, "policy.pkl")
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
     agent = get_agent("LearningToAct")
     agent.policy = policy
-    agent.save(policy_path)
-    _append_note(log_dir, f"Saved policy: {policy_path}\n")
+    agent.save(model_path)
 
     # 4) Evaluate by simulation
     baseline_avg_time = run_simulation_isolated(
-        num_patients=200,
+        num_patients=num_patients,
         agent=None,
         version_output="random_base",
         seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
     )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    _append_note(log_dir, f"Episode: {len(policy)} states\n", num_patients)
+    _append_note(log_dir, f"Training Time: {train_minutes:.2f} minutes\n", num_patients)
+    
     avg_time = run_simulation_isolated(
-        num_patients=200,
+        num_patients=num_patients,
         agent=agent,
         version_output="learningtoact",
-        is_model_run=False,
+        is_model_run=True,
         seed=EVAL_SEED,
+        model_name="LearningToAct",
+        gen_id=0,
     )
     improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
-    _append_note(log_dir, f"Baseline Avg Time: {baseline_avg_time:.2f}\n")
-    _append_note(log_dir, f"LearningToAct Avg Time: {avg_time:.2f} | Improvement: {improvement:+.2f}%\n")
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
     print(f"LearningToAct Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
 
-def train_one_generation(agent, algo_name: str, gen_id: int, train_config):
+def train_one_generation(agent, algo_name: str, gen_id: int, train_config, num_patients: int):
     """Train một thế hệ và trả về danh sách checkpoint paths được tạo ra."""
     config = train_config[gen_id]
     log_dir = os.path.join("logs", algo_name)
@@ -322,7 +332,7 @@ def train_one_generation(agent, algo_name: str, gen_id: int, train_config):
             tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
 
         if i_episode % 1000 == 0:
-            ckpt_name = f"checkpoint_v{gen_id}_ep{i_episode}.pth"
+            ckpt_name = f"checkpoint_{num_patients}_gen_{gen_id}_{i_episode}.pth"
             ckpt_path = os.path.join(log_dir, ckpt_name)
             agent.save(ckpt_path)
             ckpt_paths.append(ckpt_path)
@@ -331,23 +341,68 @@ def train_one_generation(agent, algo_name: str, gen_id: int, train_config):
     train_seconds = time.time() - t0
     train_minutes = train_seconds / 60.0
 
-    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir)
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir, num_patients=num_patients)
 
     _append_note(
         log_dir,
         f"Episode: {config['episodes']} episode\n"
         f"Training Time: {train_minutes:.2f} minutes\n",
+        num_patients=num_patients,
     )
 
     return ckpt_paths
 
 
+def _parse_checkpoint_episode(path: str) -> int:
+    """Parse episode number from checkpoint filename."""
+    import re
+    m = re.search(r"_(\d+)\.pth$", os.path.basename(path))
+    return int(m.group(1)) if m else -1
+
+
+def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, baseline_avg_time: float, num_patients: int):
+    """Evaluate all checkpoints of a generation via simulation and select the best (min avg time)."""
+    ckpt_glob = os.path.join(log_dir, f"checkpoint_{num_patients}_gen_{gen_id}_*.pth")
+    ckpt_paths = sorted(glob.glob(ckpt_glob), key=_parse_checkpoint_episode)
+    if not ckpt_paths:
+        raise RuntimeError(f"No checkpoints found for Gen {gen_id} at {ckpt_glob}")
+
+    results = []
+    best = None
+
+    for ckpt_path in ckpt_paths:
+        ep = _parse_checkpoint_episode(ckpt_path)
+        agent_eval = get_agent(algo_name)
+        agent_eval.load(ckpt_path)
+
+        avg_time = run_simulation_isolated(
+            num_patients=num_patients,
+            agent=agent_eval,
+            version_output=f"{algo_name.lower()}_g{gen_id}_ep{ep}",
+            is_model_run=False,
+            seed=seed,
+            model_name=algo_name,
+            gen_id=gen_id,
+        )
+
+        improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time else 0.0
+        results.append((ep, ckpt_path, avg_time, improvement))
+        if best is None or avg_time < best[2]:
+            best = (ep, ckpt_path, avg_time)
+
+    _append_note(log_dir, f"Gen {gen_id}: evaluated {len(results)} checkpoints\n", num_patients=num_patients)
+    if best is not None:
+        _append_note(log_dir, f"Gen {gen_id} best checkpoint: ep={best[0]} | Avg Time: {best[2]:.2f}\n", num_patients=num_patients)
+
+    return best, results
+
+
 SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", "FORLAPS", "LearningToAct"]
 
-def _append_note(log_dir: str, text: str) -> None:
+def _append_note(log_dir: str, text: str, num_patients: int = 200) -> None:
     """Append training/evaluation notes to a file under log_dir."""
     ensure_dir(log_dir)
-    note_path = os.path.join(log_dir, "training_notes.txt")
+    note_path = os.path.join(log_dir, f"training_notes_{num_patients}.txt")
     with open(note_path, "a", encoding="utf-8") as f:
         f.write(text)
 
@@ -356,14 +411,15 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("❌ Bạn chưa truyền thuật toán.")
         print("   Ví dụ cách chạy:")
-        print("   python main.py DQN")
-        print("   python main.py DDQN")
-        print("   python main.py Dueling")
-        print("   python main.py Rainbow")
-        print("   python main.py MultiStepDQN")
+        print("   python main.py DQN 200")
+        print("   python main.py DDQN 200")
+        print("   python main.py Dueling 200")
+        print("   python main.py Rainbow 200")
+        print("   python main.py MultiStepDQN 200")
         sys.exit(1)
 
     ALGO_TO_RUN = sys.argv[1].strip()
+    NUM_PATIENTS = int(sys.argv[2].strip()) if len(sys.argv) >= 3 else 200
 
     # --- 2. Kiểm tra thuật toán hợp lệ ---
     if ALGO_TO_RUN not in SUPPORTED_ALGOS:
@@ -378,34 +434,50 @@ if __name__ == "__main__":
 
     # Special-case FORLAPS: offline only, no training generations.
     if ALGO_TO_RUN == "FORLAPS":
-        run_forlaps_once_forlaps(train_seed=TRAIN_SEED, eval_seed=EVAL_SEED)
+        run_forlaps_once_forlaps(train_seed=TRAIN_SEED, eval_seed=EVAL_SEED, num_patients=NUM_PATIENTS)
         sys.exit(0)
 
     # Special-case LearningToAct: offline only, no training generations.
     if ALGO_TO_RUN == "LearningToAct":
-        run_learning_to_act_once()
+        run_learning_to_act_once(num_patients=NUM_PATIENTS)
         sys.exit(0)
 
     agent = get_agent(ALGO_TO_RUN)
 
-    print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] ---")
+    print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] with {NUM_PATIENTS} patients ---")
 
     log_dir = os.path.join("logs", ALGO_TO_RUN)
     ensure_dir(log_dir)
-    _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n")
+    _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
 
     TEST_SEED = 42
-    baseline_avg_time = run_simulation_isolated(num_patients=200, agent=None, version_output="random_base", seed=TEST_SEED)
+    
+    # Check if random_base queue log already exists
+    random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_random_base.csv")
+    if os.path.exists(random_base_queue_log):
+        print(f"✅ Found existing random_base queue log: {random_base_queue_log}")
+        print("   Skipping random_base simulation...")
+        # Still need to run once to get baseline_avg_time for comparison
+        baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base_eval", seed=TEST_SEED, model_name="Random", gen_id=0)
+    else:
+        print(f"⚠️ Random_base queue log not found. Generating...")
+        baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base", seed=TEST_SEED, model_name="Random", gen_id=0)
 
+    # Log baseline avg time
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
+    
     prev_best_avg_time = None
 
-    train_config = get_train_config(ALGO_TO_RUN)
+    train_config = get_train_config(ALGO_TO_RUN, NUM_PATIENTS)
 
     for gen_id in range(1, 6):
         if gen_id not in train_config:
             break
 
-        ckpt_paths = train_one_generation(agent, ALGO_TO_RUN, gen_id, train_config)
+        # Add separator before each generation
+        _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+        
+        ckpt_paths = train_one_generation(agent, ALGO_TO_RUN, gen_id, train_config, NUM_PATIENTS)
 
         best, _ = _evaluate_checkpoints(
             algo_name=ALGO_TO_RUN,
@@ -413,18 +485,23 @@ if __name__ == "__main__":
             log_dir=log_dir,
             seed=TEST_SEED,
             baseline_avg_time=baseline_avg_time,
+            num_patients=NUM_PATIENTS,
         )
 
         best_ep, best_ckpt_path, best_avg_time = best
-        final_name = train_config[gen_id]["save_name"]
+        final_name = f"final_{NUM_PATIENTS}_gen_{gen_id}.pth"
         final_path = os.path.join(log_dir, final_name)
         shutil.copyfile(best_ckpt_path, final_path)
-        _append_note(log_dir, f"Final Model: {final_name} (from ep={best_ep}) | Avg Time: {best_avg_time:.2f}\n")
+        
+        # Calculate improvement percentage
+        improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+        _append_note(log_dir, f"Final Model: {final_name} (from ep={best_ep}) | Avg Time: {best_avg_time:.2f} | Improve Percentage: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
 
         if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
             _append_note(
                 log_dir,
                 f"STOP: Gen {gen_id} Avg Time ({best_avg_time:.2f}) >= Gen {gen_id - 1} Avg Time ({prev_best_avg_time:.2f})\n",
+                num_patients=NUM_PATIENTS,
             )
             print(f"🛑 STOP: Gen {gen_id} did not improve over Gen {gen_id - 1}.")
             break
@@ -434,6 +511,6 @@ if __name__ == "__main__":
         if gen_id < 5 and (gen_id + 1) in train_config:
             agent_for_data = get_agent(ALGO_TO_RUN)
             agent_for_data.load(final_path)
-            run_simulation_isolated(num_patients=200, agent=agent_for_data, version_output=str(gen_id), is_model_run=True, seed=TEST_SEED)
+            run_simulation_isolated(num_patients=NUM_PATIENTS, agent=agent_for_data, version_output=str(gen_id), is_model_run=True, seed=TEST_SEED, model_name=ALGO_TO_RUN, gen_id=gen_id)
 
     print("\n🎉🎉🎉 Training cycle finished! 🎉🎉🎉")

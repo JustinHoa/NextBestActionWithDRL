@@ -17,7 +17,7 @@ _BASE_TRAIN_CONFIG = {
     1: {
         "description": "Gen 1 - Train from scratch on random data",
         "data_file": "data/raw/200_queue_log_version_random_base.csv",
-        "episodes": 3000, # 6000
+        "episodes": 2000, # 6000
         "lr": 1e-4,
         "eps_start": 1.0,
         "eps_decay": 0.9994,
@@ -144,7 +144,7 @@ def plot_training_status(
     plt.figure(figsize=(14, 6))
 
     # --- Biểu đồ Loss ---
-    plt.subplot(1, 2, 1)
+    ax1 = plt.subplot(1, 2, 1)
     plt.plot(losses, color="tab:red", alpha=0.5, label="Raw Loss")
     if len(losses) > 100:
         ma_loss = np.convolve(losses, np.ones(50) / 50, mode="valid")
@@ -152,8 +152,28 @@ def plot_training_status(
     plt.title(f"[{algo_name}] Training Loss - Version {version_id}")
     plt.xlabel("Steps")
     plt.ylabel("Loss")
-    plt.legend()
+    ax1.legend(loc="upper left")
     plt.grid(alpha=0.3)
+    
+    # Add inset plot for Gen 1 and Gen 2 to zoom into the latter half
+    if version_id in [1, 2] and len(losses) > 100:
+        # Create inset axes (position: [left, bottom, width, height] in figure coordinates)
+        from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+        axins = inset_axes(ax1, width="40%", height="40%", loc='upper right', borderpad=2)
+        
+        # Zoom into the latter 50% of the data
+        start_idx = len(losses) // 2
+        losses_zoom = losses[start_idx:]
+        axins.plot(range(start_idx, len(losses)), losses_zoom, color="tab:red", alpha=0.5)
+        if len(losses_zoom) > 50:
+            ma_loss_zoom = np.convolve(losses_zoom, np.ones(50) / 50, mode="valid")
+            axins.plot(range(start_idx + 49, len(losses)), ma_loss_zoom, color="darkred", linewidth=1.5)
+        
+        axins.set_xlabel("Steps", fontsize=8)
+        axins.set_ylabel("Loss", fontsize=8)
+        axins.tick_params(labelsize=7)
+        axins.grid(alpha=0.3)
+        axins.set_title("Zoomed (50% latter)", fontsize=8)
 
     # --- Biểu đồ Reward ---
     plt.subplot(1, 2, 2)

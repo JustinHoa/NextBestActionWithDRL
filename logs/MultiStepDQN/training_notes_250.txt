@@ -1,0 +1,16 @@
+
+=== Train model: MultiStepDQN ===
+Random base Avg Time: 302.44
+====
+Episode: 6000 episode
+Training Time: 3.76 minutes
+Gen 1: evaluated 6 checkpoints
+Gen 1 best checkpoint: ep=5000 | Avg Time: 268.63
+Final Model: final_250_gen_1.pth (from ep=5000) | Avg Time: 268.63 | Improve Percentage: +11.18%
+====
+Episode: 10000 episode
+Training Time: 6.46 minutes
+Gen 2: evaluated 10 checkpoints
+Gen 2 best checkpoint: ep=8000 | Avg Time: 274.07
+Final Model: final_250_gen_2.pth (from ep=8000) | Avg Time: 274.07 | Improve Percentage: +9.38%
+STOP: Gen 2 Avg Time (274.07) >= Gen 1 Avg Time (268.63)

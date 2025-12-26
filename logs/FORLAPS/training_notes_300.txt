@@ -1,0 +1,10 @@
+
+=== Train model: FORLAPS ===
+Loaded offline transitions: data/offline/forlaps_random_transitions.pkl | n=118424
+Augmented transitions: n=150000
+Saved FORLAPS model: logs/FORLAPS/model_300.pth
+Random base Avg Time: 353.40
+====
+Episode: 6000 episode
+Training Time: 0.62 minutes
+Avg Time: 323.99 | Improve Percentage: +8.32%

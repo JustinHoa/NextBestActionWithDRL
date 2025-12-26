@@ -1,0 +1,7 @@
+
+=== Train model: LearningToAct ===
+Random base Avg Time: 353.40
+====
+Episode: 129 states
+Training Time: 0.01 minutes
+Avg Time: 354.05 | Improve Percentage: -0.18%

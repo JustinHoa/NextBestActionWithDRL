@@ -1,0 +1,34 @@
+
+=== Train model: DDQN ===
+Random base Avg Time: 254.79
+====
+Episode: 6000 episode
+Training Time: 4.05 minutes
+Gen 1: evaluated 6 checkpoints
+Gen 1 best checkpoint: ep=1000 | Avg Time: 230.48
+Final Model: final_200_gen_1.pth (from ep=1000) | Avg Time: 230.48 | Improve Percentage: +9.54%
+====
+Episode: 10000 episode
+Training Time: 7.02 minutes
+Gen 2: evaluated 10 checkpoints
+Gen 2 best checkpoint: ep=2000 | Avg Time: 225.39
+Final Model: final_200_gen_2.pth (from ep=2000) | Avg Time: 225.39 | Improve Percentage: +11.54%
+====
+Episode: 8000 episode
+Training Time: 5.70 minutes
+Gen 3: evaluated 8 checkpoints
+Gen 3 best checkpoint: ep=8000 | Avg Time: 218.08
+Final Model: final_200_gen_3.pth (from ep=8000) | Avg Time: 218.08 | Improve Percentage: +14.41%
+====
+Episode: 8000 episode
+Training Time: 5.65 minutes
+Gen 4: evaluated 8 checkpoints
+Gen 4 best checkpoint: ep=3000 | Avg Time: 193.92
+Final Model: final_200_gen_4.pth (from ep=3000) | Avg Time: 193.92 | Improve Percentage: +23.89%
+====
+Episode: 3000 episode
+Training Time: 2.10 minutes
+Gen 5: evaluated 3 checkpoints
+Gen 5 best checkpoint: ep=1000 | Avg Time: 212.71
+Final Model: final_200_gen_5.pth (from ep=1000) | Avg Time: 212.71 | Improve Percentage: +16.52%
+STOP: Gen 5 Avg Time (212.71) >= Gen 4 Avg Time (193.92)

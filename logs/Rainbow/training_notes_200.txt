@@ -1,0 +1,22 @@
+
+=== Train model: Rainbow ===
+Random base Avg Time: 254.79
+====
+Episode: 6000 episode
+Training Time: 14.97 minutes
+Gen 1: evaluated 6 checkpoints
+Gen 1 best checkpoint: ep=6000 | Avg Time: 224.85
+Final Model: final_200_gen_1.pth (from ep=6000) | Avg Time: 224.85 | Improve Percentage: +11.75%
+====
+Episode: 10000 episode
+Training Time: 28.82 minutes
+Gen 2: evaluated 10 checkpoints
+Gen 2 best checkpoint: ep=2000 | Avg Time: 212.39
+Final Model: final_200_gen_2.pth (from ep=2000) | Avg Time: 212.39 | Improve Percentage: +16.64%
+====
+Episode: 8000 episode
+Training Time: 40.54 minutes
+Gen 3: evaluated 8 checkpoints
+Gen 3 best checkpoint: ep=3000 | Avg Time: 233.94
+Final Model: final_200_gen_3.pth (from ep=3000) | Avg Time: 233.94 | Improve Percentage: +8.18%
+STOP: Gen 3 Avg Time (233.94) >= Gen 2 Avg Time (212.39)

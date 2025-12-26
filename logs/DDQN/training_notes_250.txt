@@ -1,0 +1,16 @@
+
+=== Train model: DDQN ===
+Random base Avg Time: 302.44
+====
+Episode: 6000 episode
+Training Time: 3.81 minutes
+Gen 1: evaluated 6 checkpoints
+Gen 1 best checkpoint: ep=6000 | Avg Time: 268.11
+Final Model: final_250_gen_1.pth (from ep=6000) | Avg Time: 268.11 | Improve Percentage: +11.35%
+====
+Episode: 10000 episode
+Training Time: 6.74 minutes
+Gen 2: evaluated 10 checkpoints
+Gen 2 best checkpoint: ep=4000 | Avg Time: 279.98
+Final Model: final_250_gen_2.pth (from ep=4000) | Avg Time: 279.98 | Improve Percentage: +7.43%
+STOP: Gen 2 Avg Time (279.98) >= Gen 1 Avg Time (268.11)

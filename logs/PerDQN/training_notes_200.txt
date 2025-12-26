@@ -1,0 +1,22 @@
+
+=== Train model: PerDQN ===
+Random base Avg Time: 254.79
+====
+Episode: 6000 episode
+Training Time: 8.99 minutes
+Gen 1: evaluated 6 checkpoints
+Gen 1 best checkpoint: ep=3000 | Avg Time: 233.85
+Final Model: final_200_gen_1.pth (from ep=3000) | Avg Time: 233.85 | Improve Percentage: +8.22%
+====
+Episode: 10000 episode
+Training Time: 23.05 minutes
+Gen 2: evaluated 10 checkpoints
+Gen 2 best checkpoint: ep=6000 | Avg Time: 214.82
+Final Model: final_200_gen_2.pth (from ep=6000) | Avg Time: 214.82 | Improve Percentage: +15.69%
+====
+Episode: 8000 episode
+Training Time: 18.42 minutes
+Gen 3: evaluated 8 checkpoints
+Gen 3 best checkpoint: ep=3000 | Avg Time: 220.74
+Final Model: final_200_gen_3.pth (from ep=3000) | Avg Time: 220.74 | Improve Percentage: +13.37%
+STOP: Gen 3 Avg Time (220.74) >= Gen 2 Avg Time (214.82)

@@ -282,10 +282,15 @@ def train_penalty_dqn(agent, num_patients: int):
     train_config = get_train_config(algo_name, num_patients)
     config = train_config[1]
     
+    smoke_episodes_raw = os.environ.get("SMOKE_EPISODES")
+    smoke_episodes = int(smoke_episodes_raw) if smoke_episodes_raw else None
+    # Default: train full episodes. Allow optional override for debugging.
+    episodes_to_run = config["episodes"] if smoke_episodes is None else min(config["episodes"], smoke_episodes)
+    
     print(f"\n{'='*60}")
     print(f"🚀 STARTING TRAINING: [PenaltyDQN]")
     print(f"   Description: {config['description']}")
-    print(f"   Episodes: {config['episodes']}")
+    print(f"   Episodes: {episodes_to_run}")
     print(f"   Data: {config['data_file']}")
     print(f"{'='*60}\n")
     
@@ -298,7 +303,7 @@ def train_penalty_dqn(agent, num_patients: int):
     ckpt_paths = []
     t0 = time.time()
     
-    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training PenaltyDQN")
+    tqdm_bar = tqdm(range(1, episodes_to_run + 1), desc=f"Training PenaltyDQN")
     for i_episode in tqdm_bar:
         state = env.reset()
         score = 0
@@ -344,6 +349,60 @@ def train_penalty_dqn(agent, num_patients: int):
     )
     
     return ckpt_paths
+
+
+def _validate_penalty_checkpoint(ckpt_path: str, num_patients: int):
+    import pandas as pd
+
+    possible_states_path = os.path.join("data", "raw", "possible_states.csv")
+    df_states = pd.read_csv(possible_states_path, header=None)
+    possible_states = df_states.values
+
+    queue_log_path = os.path.join("data", "raw", f"queue_log_{num_patients}_random_base.csv")
+    df_queue = pd.read_csv(queue_log_path)
+    if df_queue.shape[1] == 22:
+        queue_trace = df_queue.iloc[:, 1:].values
+    else:
+        queue_trace = df_queue.values
+
+    env = PenaltyEnv(STATE_SIZE, ACTION_SIZE, data_path=queue_log_path)
+
+    agent_eval = get_agent("PenaltyDQN")
+    agent_eval.load(ckpt_path)
+
+    total = int(len(possible_states))
+    invalid = 0
+
+    for row in possible_states:
+        gender = int(row[0])
+        marital = int(row[1])
+        prefix = row[2:23].astype(np.float32)
+
+        env.features = np.array([gender, marital], dtype=np.int64)
+        env.blanks = prefix.copy()
+        env.done = False
+        env.total_time = 0.0
+        env.start_time_idx = 0
+        env.goal_mask = env._create_goal_mask()
+
+        q_idx = np.random.randint(0, env.max_trace_len)
+        env.queues = queue_trace[q_idx]
+
+        state = env._get_state()
+        action = agent_eval.act(state, mask=None, eps=0.0)
+        _, reward, _ = env.step(int(action))
+        if reward < 0:
+            invalid += 1
+
+    valid = total - invalid
+    valid_pct = (valid / total) * 100.0 if total else 0.0
+    return {
+        "total": total,
+        "valid": valid,
+        "invalid": invalid,
+        "valid_pct": valid_pct,
+    }
+
 
 def train_one_generation(agent, algo_name: str, gen_id: int, train_config, num_patients: int):
     """Train một thế hệ và trả về danh sách checkpoint paths được tạo ra."""
@@ -475,12 +534,14 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
 
 SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", "FORLAPS", "LearningToAct", "PenaltyDQN"]
 
+
 def _append_note(log_dir: str, text: str, num_patients: int = 200) -> None:
     """Append training/evaluation notes to a file under log_dir."""
     ensure_dir(log_dir)
     note_path = os.path.join(log_dir, f"training_notes_{num_patients}.txt")
     with open(note_path, "a", encoding="utf-8") as f:
         f.write(text)
+
 
 if __name__ == "__main__":
     # --- 1. Lấy tham số từ command line ---
@@ -528,36 +589,84 @@ if __name__ == "__main__":
         # Get baseline
         random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_random_base.csv")
         if os.path.exists(random_base_queue_log):
+            print(f"✅ Found existing random_base queue log: {random_base_queue_log}")
+            print("   Skipping random_base simulation...")
+            # Still need to run once to get baseline_avg_time for comparison
             baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base_eval", seed=EVAL_SEED, model_name="Random", gen_id=0)
         else:
             baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base", seed=EVAL_SEED, model_name="Random", gen_id=0)
-        
+
+        # Log baseline avg time
         _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
         _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
         
         # Train
         ckpt_paths = train_penalty_dqn(agent, NUM_PATIENTS)
-        
-        # Evaluate checkpoints
-        best, _ = _evaluate_checkpoints(
-            algo_name=ALGO_TO_RUN,
-            gen_id=1,
-            log_dir=log_dir,
-            seed=EVAL_SEED,
-            baseline_avg_time=baseline_avg_time,
-            num_patients=NUM_PATIENTS,
-        )
-        
-        best_ep, best_ckpt_path, best_avg_time = best
+
+        if not ckpt_paths:
+            _append_note(log_dir, "No checkpoints were produced in this run (episodes < checkpoint interval).\n", num_patients=NUM_PATIENTS)
+            print("✅ PenaltyDQN Training Complete!")
+            print("   No checkpoints produced; skipping checkpoint validation/simulation.")
+            sys.exit(0)
+
+        _append_note(log_dir, "\n====\nCHECKPOINT VALIDATION (possible_states.csv)\n", num_patients=NUM_PATIENTS)
+
+        best_valid_ckpt = None
+        best_valid_avg_time = None
+        best_valid_ep = None
+
+        for ckpt_path in ckpt_paths:
+            ep = _parse_checkpoint_episode(ckpt_path)
+            stats = _validate_penalty_checkpoint(ckpt_path, NUM_PATIENTS)
+            _append_note(
+                log_dir,
+                f"Checkpoint: {os.path.basename(ckpt_path)} | valid={stats['valid']}/{stats['total']} ({stats['valid_pct']:.2f}%) | invalid={stats['invalid']}\n",
+                num_patients=NUM_PATIENTS,
+            )
+
+            if stats["invalid"] != 0:
+                continue
+
+            avg_time = run_simulation_isolated(
+                num_patients=NUM_PATIENTS,
+                agent=get_agent(ALGO_TO_RUN),
+                version_output=f"penaltydqn_valid_ep{ep}",
+                is_model_run=False,
+                seed=EVAL_SEED,
+                model_name=ALGO_TO_RUN,
+                gen_id=1,
+            )
+
+            _append_note(
+                log_dir,
+                f"  Simulation: Avg Time={avg_time:.2f} | Improvement={((baseline_avg_time - avg_time) / baseline_avg_time) * 100:+.2f}%\n",
+                num_patients=NUM_PATIENTS,
+            )
+
+            if best_valid_avg_time is None or avg_time < best_valid_avg_time:
+                best_valid_avg_time = avg_time
+                best_valid_ckpt = ckpt_path
+                best_valid_ep = ep
+
+        if best_valid_ckpt is None:
+            _append_note(log_dir, "No checkpoint reached 100% valid actions; no simulation winner selected.\n", num_patients=NUM_PATIENTS)
+            print("✅ PenaltyDQN Training Complete!")
+            print("   No checkpoint achieved 100% valid actions.")
+            sys.exit(0)
+
         final_name = f"final_{NUM_PATIENTS}_gen_1.pth"
         final_path = os.path.join(log_dir, final_name)
-        shutil.copyfile(best_ckpt_path, final_path)
-        
-        improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
-        _append_note(log_dir, f"Final Model: {final_name} (from ep={best_ep}) | Avg Time: {best_avg_time:.2f} | Improve Percentage: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
-        
+        shutil.copyfile(best_valid_ckpt, final_path)
+
+        improvement_pct = ((baseline_avg_time - best_valid_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+        _append_note(
+            log_dir,
+            f"Final Model: {final_name} (from ep={best_valid_ep}) | Avg Time: {best_valid_avg_time:.2f} | Improve Percentage: {improvement_pct:+.2f}%\n",
+            num_patients=NUM_PATIENTS,
+        )
+
         print(f"✅ PenaltyDQN Training Complete!")
-        print(f"   Best Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
+        print(f"   Best VALID checkpoint ep={best_valid_ep} | Avg Time: {best_valid_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
         sys.exit(0)
 
     agent = get_agent(ALGO_TO_RUN)

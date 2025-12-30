@@ -1,11 +1,9 @@
 import numpy as np
 import random
 import torch
-import torch.nn as nn
 import torch.optim as optim
-import torch.nn.functional as F
 
-from common.buffers import PrioritizedReplayBuffer
+from common.buffers import ReplayBuffer
 from common.utils import DEVICE
 from networks.dqn_net import StandardQNetwork
 
@@ -28,7 +26,6 @@ class PenaltyDQNAgent:
         gamma=0.99,
         tau=1e-3,
         update_every=4,
-        alpha=0.6,  # PER alpha parameter
     ):
         self.state_size = state_size
         self.action_size = action_size
@@ -47,8 +44,8 @@ class PenaltyDQNAgent:
         self.optimizer = optim.Adam(self.qnetwork_local.parameters(), lr=lr)
         self.qnetwork_target.load_state_dict(self.qnetwork_local.state_dict())
 
-        # Prioritized Experience Replay
-        self.memory = PrioritizedReplayBuffer(buffer_size, batch_size, seed, alpha=alpha)
+        # Standard Replay Buffer (no PER). We can add PER back later if needed.
+        self.memory = ReplayBuffer(buffer_size, batch_size, seed)
         self.t_step = 0
 
     def step(self, state, action, reward, next_state, done, next_mask=None):
@@ -89,12 +86,18 @@ class PenaltyDQNAgent:
 
     def learn(self, experiences, gamma):
         """
-        Học từ batch experiences sử dụng Prioritized Experience Replay.
+        Học từ batch experiences (hỗ trợ cả PER và standard buffer).
         """
-        if len(experiences) == 7:  # PER format
+        # Support both formats:
+        # - Standard buffer: (states, actions, rewards, next_states, dones, next_masks, weights, indices)
+        # - PER buffer:      (states, actions, rewards, next_states, dones, next_masks, weights, indices)
+        # Some previous edits also used a 7-tuple with (weights, indices) as a tail.
+        if len(experiences) == 8:
+            states, actions, rewards, next_states, dones, next_masks, weights, indices = experiences
+        elif len(experiences) == 7:
             states, actions, rewards, next_states, dones, next_masks, (weights, indices) = experiences
         else:
-            raise ValueError("PenaltyDQN requires PrioritizedReplayBuffer")
+            raise ValueError(f"Unexpected experiences format with len={len(experiences)}")
 
         # Compute Q targets
         Q_targets_next = self.qnetwork_target(next_states).detach().max(1)[0].unsqueeze(1)
@@ -116,9 +119,10 @@ class PenaltyDQNAgent:
         # Update target network
         self.soft_update(self.qnetwork_local, self.qnetwork_target, self.tau)
 
-        # Update priorities in replay buffer
-        new_priorities = td_errors.detach().cpu().numpy().squeeze()
-        self.memory.update_priorities(indices, new_priorities)
+        # Update priorities (no-op for standard buffer)
+        if indices is not None:
+            new_priorities = td_errors.detach().cpu().numpy().squeeze()
+            self.memory.update_priorities(indices, new_priorities)
 
         return loss.item()
 

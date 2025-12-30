@@ -38,7 +38,15 @@ class ReplayBuffer:
         rewards = torch.from_numpy(np.vstack([e[2] for e in experiences])).float().to(DEVICE)
         next_states = torch.from_numpy(np.vstack([e[3] for e in experiences])).float().to(DEVICE)
         dones = torch.from_numpy(np.vstack([e[4] for e in experiences]).astype(np.uint8)).float().to(DEVICE)
-        next_masks = torch.from_numpy(np.vstack([e[5] for e in experiences])).float().to(DEVICE)
+
+        # Handle next_masks: convert None to zeros array
+        next_masks_list = []
+        for e in experiences:
+            if e[5] is None:
+                next_masks_list.append(np.zeros(21, dtype=np.float32))
+            else:
+                next_masks_list.append(e[5])
+        next_masks = torch.from_numpy(np.vstack(next_masks_list)).float().to(DEVICE)
         
         # Trả về weights và indices để có cùng interface với PER
         weights = torch.ones_like(rewards)
@@ -102,7 +110,15 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         rewards = torch.from_numpy(np.vstack([e[2] for e in experiences])).float().to(DEVICE)
         next_states = torch.from_numpy(np.vstack([e[3] for e in experiences])).float().to(DEVICE)
         dones = torch.from_numpy(np.vstack([e[4] for e in experiences]).astype(np.uint8)).float().to(DEVICE)
-        next_masks = torch.from_numpy(np.vstack([e[5] for e in experiences])).float().to(DEVICE)
+        
+        # Handle next_masks: convert None to zeros array
+        next_masks_list = []
+        for e in experiences:
+            if e[5] is None:
+                next_masks_list.append(np.zeros(21))  # ACTION_SIZE = 21
+            else:
+                next_masks_list.append(e[5])
+        next_masks = torch.from_numpy(np.vstack(next_masks_list)).float().to(DEVICE)
 
         # Trả về thêm weights và indices
         return (states, actions, rewards, next_states, dones, next_masks, weights, indices)

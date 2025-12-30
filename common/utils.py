@@ -75,10 +75,10 @@ _PENALTY_DQN_CONFIG = {
     1: {
         "description": "PenaltyDQN - Train from scratch with penalty-based rewards",
         "data_file": "data/raw/queue_log_200_random_base.csv",
-        "episodes": 300000,
+        "episodes": 100000,
         "lr": 1e-4,
         "eps_start": 1.0,
-        "eps_decay": 0.99995,
+        "eps_decay": 0.9999,
         "eps_end": 0.01,
         "load_model": None,
         "save_name": "final_200_gen_1.pth",

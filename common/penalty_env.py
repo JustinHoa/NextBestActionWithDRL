@@ -190,8 +190,9 @@ class PenaltyEnv:
         else:
             # Reward dựa trên ranking của waiting time
             all_wait = (self.queues * self.mean_time_arr) / self.staff_arr
-            sorted_times = sorted(all_wait)
-            ranking = sorted_times.tolist().index(time_action) if time_action in sorted_times else len(sorted_times) // 2
+            sorted_times = np.sort(all_wait)
+            ranking = int(np.searchsorted(sorted_times, time_action, side="left"))
+            ranking = min(ranking, len(sorted_times) - 1)
             reward = 2.0 - 0.2 * ranking
             self.done = False
 

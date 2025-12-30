@@ -216,18 +216,92 @@ def run_simulation_if_valid(results, model_path, num_patients=200):
         print(f"   Please retrain the model with more episodes or adjust hyperparameters.\n")
         return None
 
+def validate_all_checkpoints(log_dir, num_patients=200):
+    """Validate all checkpoints and save results to training notes."""
+    import glob
+    import re
+    
+    # Find all checkpoints
+    ckpt_pattern = os.path.join(log_dir, f"checkpoint_{num_patients}_gen_1_*.pth")
+    ckpt_paths = sorted(glob.glob(ckpt_pattern), key=lambda x: int(re.search(r'_(\d+)\.pth$', x).group(1)))
+    
+    if not ckpt_paths:
+        print(f"❌ No checkpoints found at {ckpt_pattern}")
+        return
+    
+    print(f"\n{'='*80}")
+    print(f"VALIDATING {len(ckpt_paths)} CHECKPOINTS")
+    print(f"{'='*80}\n")
+    
+    # Open training notes for appending
+    notes_path = os.path.join(log_dir, f"training_notes_{num_patients}.txt")
+    
+    with open(notes_path, 'a', encoding='utf-8') as f:
+        f.write("\n" + "="*60 + "\n")
+        f.write("CHECKPOINT VALIDATION RESULTS\n")
+        f.write("="*60 + "\n\n")
+        
+        for i, ckpt_path in enumerate(ckpt_paths, 1):
+            # Extract episode number
+            ep = int(re.search(r'_(\d+)\.pth$', ckpt_path).group(1))
+            ckpt_name = os.path.basename(ckpt_path)
+            
+            print(f"[{i}/{len(ckpt_paths)}] Testing {ckpt_name}...")
+            
+            # Validate checkpoint
+            results = test_penalty_dqn_on_possible_states(ckpt_path, num_patients)
+            
+            # Write to notes
+            f.write(f"Checkpoint: {ckpt_name} (Episode {ep})\n")
+            f.write(f"  Valid Actions: {results['valid_actions']}/{results['total_states']} ({results['valid_pct']:.2f}%)\n")
+            f.write(f"  Invalid Actions: {results['invalid_actions']}/{results['total_states']} ({results['invalid_pct']:.2f}%)\n")
+            
+            # Run simulation if 100% valid
+            if results['invalid_actions'] == 0:
+                print(f"  ✅ 100% Valid! Running simulation...")
+                avg_time = run_simulation_if_valid(results, ckpt_path, num_patients)
+                if avg_time:
+                    f.write(f"  Simulation Avg Time: {avg_time:.2f} minutes\n")
+                f.write(f"  Status: PASSED (100% valid actions)\n")
+            else:
+                print(f"  ❌ Failed: {results['invalid_actions']} invalid actions")
+                f.write(f"  Status: FAILED ({results['invalid_actions']} invalid actions)\n")
+            
+            f.write("\n")
+            f.flush()
+        
+        f.write("="*60 + "\n")
+        f.write("VALIDATION COMPLETE\n")
+        f.write("="*60 + "\n")
+    
+    print(f"\n✅ Validation results saved to: {notes_path}\n")
+
 if __name__ == "__main__":
     # Parse command line arguments
     if len(sys.argv) < 2:
-        print("Usage: python validate_penalty_dqn.py <model_path> [num_patients]")
-        print("Example: python validate_penalty_dqn.py ../logs/PenaltyDQN/final_200_gen_1.pth 200")
+        print("Usage:")
+        print("  Single checkpoint: python validate_penalty_dqn.py <model_path> [num_patients]")
+        print("  All checkpoints:   python validate_penalty_dqn.py --all <log_dir> [num_patients]")
+        print("\nExamples:")
+        print("  python validate_penalty_dqn.py ../logs/PenaltyDQN/final_200_gen_1.pth 200")
+        print("  python validate_penalty_dqn.py --all ../logs/PenaltyDQN 200")
         sys.exit(1)
     
-    model_path = sys.argv[1]
-    num_patients = int(sys.argv[2]) if len(sys.argv) >= 3 else 200
-    
-    # Validate model
-    results = test_penalty_dqn_on_possible_states(model_path, num_patients)
-    
-    # Run simulation if valid
-    run_simulation_if_valid(results, model_path, num_patients)
+    # Check if validating all checkpoints
+    if sys.argv[1] == "--all":
+        if len(sys.argv) < 3:
+            print("❌ Please provide log directory")
+            sys.exit(1)
+        log_dir = sys.argv[2]
+        num_patients = int(sys.argv[3]) if len(sys.argv) >= 4 else 200
+        validate_all_checkpoints(log_dir, num_patients)
+    else:
+        # Single checkpoint validation
+        model_path = sys.argv[1]
+        num_patients = int(sys.argv[2]) if len(sys.argv) >= 3 else 200
+        
+        # Validate model
+        results = test_penalty_dqn_on_possible_states(model_path, num_patients)
+        
+        # Run simulation if valid
+        run_simulation_if_valid(results, model_path, num_patients)

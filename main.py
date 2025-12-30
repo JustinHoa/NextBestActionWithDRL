@@ -18,8 +18,10 @@ from agents.rainbow_agent import RainbowAgent
 from agents.per_dqn_agent import PerDqnAgent
 from agents.multi_step_dqn_agent import MultiStepDqnAgent
 from agents.learning_to_act_agent import LearningToActAgent
+from agents.penalty_dqn_agent import PenaltyDQNAgent
 from agents.forlaps import run_forlaps_once as run_forlaps_once_forlaps
 from common.env import FillBlanksEnv
+from common.penalty_env import PenaltyEnv
 from common.utils import (
     ACTION_SIZE,
     STATE_SIZE,
@@ -102,6 +104,8 @@ def get_agent(algo_name: str):
         return DQNAgent(STATE_SIZE, ACTION_SIZE)
     if algo_name == "LearningToAct":
         return LearningToActAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "PenaltyDQN":
+        return PenaltyDQNAgent(STATE_SIZE, ACTION_SIZE)
     raise ValueError(f"Unknown algorithm: {algo_name}")
 
 
@@ -269,6 +273,78 @@ def run_learning_to_act_once(num_patients: int = 200):
     _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
     print(f"LearningToAct Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
 
+def train_penalty_dqn(agent, num_patients: int):
+    """Train PenaltyDQN với penalty-based reward system."""
+    algo_name = "PenaltyDQN"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    
+    train_config = get_train_config(algo_name, num_patients)
+    config = train_config[1]
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 STARTING TRAINING: [PenaltyDQN]")
+    print(f"   Description: {config['description']}")
+    print(f"   Episodes: {config['episodes']}")
+    print(f"   Data: {config['data_file']}")
+    print(f"{'='*60}\n")
+    
+    env = PenaltyEnv(STATE_SIZE, ACTION_SIZE, data_path=config["data_file"])
+    
+    scores_window = deque(maxlen=100)
+    all_scores, all_losses = [], []
+    eps = config["eps_start"]
+    
+    ckpt_paths = []
+    t0 = time.time()
+    
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training PenaltyDQN")
+    for i_episode in tqdm_bar:
+        state = env.reset()
+        score = 0
+        for _ in range(30):
+            # PenaltyDQN không dùng mask
+            action = agent.act(state, mask=None, eps=eps)
+            next_state, reward, done = env.step(action)
+            
+            loss = agent.step(state, action, reward, next_state, done, next_mask=None)
+            if loss is not None:
+                all_losses.append(loss)
+            
+            state = next_state
+            score += reward
+            if done:
+                break
+        
+        scores_window.append(score)
+        all_scores.append(score)
+        eps = max(config["eps_end"], eps * config["eps_decay"])
+        
+        if i_episode % 100 == 0:
+            tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
+        
+        # Save checkpoints every 10k episodes
+        if i_episode % 10000 == 0:
+            ckpt_name = f"checkpoint_{num_patients}_gen_1_{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
+    
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    plot_training_status(all_scores, all_losses, algo_name, 1, save_dir=log_dir, num_patients=num_patients)
+    
+    _append_note(
+        log_dir,
+        f"Episode: {config['episodes']} episode\n"
+        f"Training Time: {train_minutes:.2f} minutes\n",
+        num_patients=num_patients,
+    )
+    
+    return ckpt_paths
+
 def train_one_generation(agent, algo_name: str, gen_id: int, train_config, num_patients: int):
     """Train một thế hệ và trả về danh sách checkpoint paths được tạo ra."""
     config = train_config[gen_id]
@@ -397,7 +473,7 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
     return best, results
 
 
-SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", "FORLAPS", "LearningToAct"]
+SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", "FORLAPS", "LearningToAct", "PenaltyDQN"]
 
 def _append_note(log_dir: str, text: str, num_patients: int = 200) -> None:
     """Append training/evaluation notes to a file under log_dir."""
@@ -440,6 +516,48 @@ if __name__ == "__main__":
     # Special-case LearningToAct: offline only, no training generations.
     if ALGO_TO_RUN == "LearningToAct":
         run_learning_to_act_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case PenaltyDQN: single generation with penalty-based training
+    if ALGO_TO_RUN == "PenaltyDQN":
+        agent = get_agent(ALGO_TO_RUN)
+        log_dir = os.path.join("logs", ALGO_TO_RUN)
+        ensure_dir(log_dir)
+        _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
+        
+        # Get baseline
+        random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_random_base.csv")
+        if os.path.exists(random_base_queue_log):
+            baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base_eval", seed=EVAL_SEED, model_name="Random", gen_id=0)
+        else:
+            baseline_avg_time = run_simulation_isolated(num_patients=NUM_PATIENTS, agent=None, version_output="random_base", seed=EVAL_SEED, model_name="Random", gen_id=0)
+        
+        _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
+        _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+        
+        # Train
+        ckpt_paths = train_penalty_dqn(agent, NUM_PATIENTS)
+        
+        # Evaluate checkpoints
+        best, _ = _evaluate_checkpoints(
+            algo_name=ALGO_TO_RUN,
+            gen_id=1,
+            log_dir=log_dir,
+            seed=EVAL_SEED,
+            baseline_avg_time=baseline_avg_time,
+            num_patients=NUM_PATIENTS,
+        )
+        
+        best_ep, best_ckpt_path, best_avg_time = best
+        final_name = f"final_{NUM_PATIENTS}_gen_1.pth"
+        final_path = os.path.join(log_dir, final_name)
+        shutil.copyfile(best_ckpt_path, final_path)
+        
+        improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+        _append_note(log_dir, f"Final Model: {final_name} (from ep={best_ep}) | Avg Time: {best_avg_time:.2f} | Improve Percentage: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
+        
+        print(f"✅ PenaltyDQN Training Complete!")
+        print(f"   Best Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
         sys.exit(0)
 
     agent = get_agent(ALGO_TO_RUN)

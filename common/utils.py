@@ -71,6 +71,20 @@ _BASE_TRAIN_CONFIG = {
     },
 }
 
+_PENALTY_DQN_CONFIG = {
+    1: {
+        "description": "PenaltyDQN - Train from scratch with penalty-based rewards",
+        "data_file": "data/raw/queue_log_200_random_base.csv",
+        "episodes": 300000,
+        "lr": 1e-4,
+        "eps_start": 1.0,
+        "eps_decay": 0.99995,
+        "eps_end": 0.01,
+        "load_model": None,
+        "save_name": "final_200_gen_1.pth",
+    },
+}
+
 TRAIN_CONFIGS = {
     "DQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "DDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
@@ -78,6 +92,7 @@ TRAIN_CONFIGS = {
     "PerDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "MultiStepDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "Rainbow": copy.deepcopy(_BASE_TRAIN_CONFIG),
+    "PenaltyDQN": copy.deepcopy(_PENALTY_DQN_CONFIG),
 }
 
 

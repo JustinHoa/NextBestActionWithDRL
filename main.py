@@ -19,6 +19,9 @@ from agents.per_dqn_agent import PerDqnAgent
 from agents.multi_step_dqn_agent import MultiStepDqnAgent
 from agents.learning_to_act_agent import LearningToActAgent
 from agents.penalty_dqn_agent import PenaltyDQNAgent
+from agents.fcfs_agent import FCFSAgent
+from agents.sjf_agent import SJFAgent
+from agents.linear_programming_agent import LinearProgrammingAgent
 from agents.static_queue_dqn_agent import StaticQueueDQNAgent
 from agents.dynamic_queue_dqn_agent import DynamicQueueDQNAgent
 from agents.priority_queue_dqn_agent import PriorityQueueDQNAgent
@@ -133,6 +136,12 @@ def get_agent(algo_name: str):
         return LearningToActAgent(STATE_SIZE, ACTION_SIZE)
     if algo_name == "PenaltyDQN":
         return PenaltyDQNAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "FCFS":
+        return FCFSAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "SJF":
+        return SJFAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "LP":
+        return LinearProgrammingAgent(STATE_SIZE, ACTION_SIZE)
     
     # Static Queue Variants
     if algo_name == "StaticQueueDQN":
@@ -342,6 +351,136 @@ def run_learning_to_act_once(num_patients: int = 200):
     improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
     _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
     print(f"LearningToAct Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
+
+def run_fcfs_once(num_patients: int = 200):
+    """Entry point for: python main.py FCFS
+    
+    FCFS (First Come First Serve) baseline - deterministic sequential processing.
+    """
+    algo_name = "FCFS"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    _append_note(log_dir, "\n=== Baseline: FCFS ===\n", num_patients)
+    
+    # Create FCFS agent
+    agent = get_agent("FCFS")
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
+    agent.save(model_path)
+    
+    # Get baseline
+    baseline_avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=None,
+        version_output="random_base",
+        seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
+    )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    
+    # Evaluate FCFS
+    avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=agent,
+        version_output="fcfs",
+        is_model_run=True,
+        seed=EVAL_SEED,
+        model_name="FCFS",
+        gen_id=0,
+    )
+    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
+    print(f"✅ FCFS Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
+
+def run_sjf_once(num_patients: int = 200):
+    """Entry point for: python main.py SJF
+    
+    SJF (Shortest Job First) baseline - prioritizes activities with shortest processing time.
+    """
+    algo_name = "SJF"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    _append_note(log_dir, "\n=== Baseline: SJF ===\n", num_patients)
+    
+    # Create SJF agent
+    agent = get_agent("SJF")
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
+    agent.save(model_path)
+    
+    # Get baseline
+    baseline_avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=None,
+        version_output="random_base",
+        seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
+    )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    
+    # Evaluate SJF
+    avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=agent,
+        version_output="sjf",
+        is_model_run=True,
+        seed=EVAL_SEED,
+        model_name="SJF",
+        gen_id=0,
+    )
+    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
+    print(f"✅ SJF Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
+
+def run_lp_once(num_patients: int = 200):
+    """Entry point for: python main.py LP
+    
+    LP (Linear Programming) baseline - uses heuristic based on time, queue, and staff.
+    """
+    algo_name = "LP"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    _append_note(log_dir, "\n=== Baseline: Linear Programming ===\n", num_patients)
+    
+    # Create LP agent
+    agent = get_agent("LP")
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
+    agent.save(model_path)
+    
+    # Get baseline
+    baseline_avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=None,
+        version_output="random_base",
+        seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
+    )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    
+    # Evaluate LP
+    avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=agent,
+        version_output="lp",
+        is_model_run=True,
+        seed=EVAL_SEED,
+        model_name="LP",
+        gen_id=0,
+    )
+    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
+    print(f"✅ LP Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
 
 def train_penalty_dqn(agent, num_patients: int):
     """Train PenaltyDQN với penalty-based reward system."""
@@ -877,6 +1016,15 @@ def train_queue_variant_generic(agent, algo_name: str, num_patients: int, gen_id
     return ckpt_paths
 
 
+def _parse_checkpoint_episode(ckpt_path: str) -> int:
+    """Extract episode number from checkpoint filename."""
+    import re
+    match = re.search(r'_(\d+)\.pth$', ckpt_path)
+    if match:
+        return int(match.group(1))
+    return 0
+
+
 def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, baseline_avg_time: float, num_patients: int):
     """Evaluate all checkpoints of a generation via simulation and select the best (min avg time)."""
     ckpt_glob = os.path.join(log_dir, f"checkpoint_{num_patients}_gen_{gen_id}_*.pth")
@@ -917,6 +1065,7 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
 SUPPORTED_ALGOS = [
     "DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", 
     "FORLAPS", "LearningToAct", "PenaltyDQN",
+    "FCFS", "SJF", "LP",  # Baseline algorithms
     # Static Queue Variants
     "StaticQueueDQN", "StaticQueueDDQN", "StaticQueueDueling", "StaticQueuePerDQN", "StaticQueueRainbow", "StaticQueueMultiStepDQN",
     # Dynamic Queue Variants
@@ -968,6 +1117,21 @@ if __name__ == "__main__":
     # Special-case LearningToAct: offline only, no training generations.
     if ALGO_TO_RUN == "LearningToAct":
         run_learning_to_act_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case FCFS: baseline algorithm
+    if ALGO_TO_RUN == "FCFS":
+        run_fcfs_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case SJF: baseline algorithm
+    if ALGO_TO_RUN == "SJF":
+        run_sjf_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case LP: baseline algorithm
+    if ALGO_TO_RUN == "LP":
+        run_lp_once(num_patients=NUM_PATIENTS)
         sys.exit(0)
     
     # Special-case PenaltyDQN: single generation with penalty-based training
@@ -1229,11 +1393,11 @@ if __name__ == "__main__":
                 if gen_id < 3 and (gen_id + 1) in train_config:
                     agent_for_data = get_agent(ALGO_TO_RUN)
                     agent_for_data.load(final_path)
-                    run_dynamic_queue_simulation(NUM_PATIENTS, agent_for_data, f"dynamicqueue_gen_{gen_id}", EVAL_SEED, "DynamicQueueDQN", gen_id)
+                    run_dynamic_queue_simulation(NUM_PATIENTS, agent_for_data, f"dynamicqueue_gen_{gen_id}", EVAL_SEED, "dynamicqueue", gen_id)
         
         print(f"\n🎉 DynamicQueueDQN Training Cycle Complete!")
         sys.exit(0)
-
+    
     # Special-case PriorityQueueDQN: multi-generation training with priority queue simulation
     if ALGO_TO_RUN == "PriorityQueueDQN":
         from simulation.priority_queue_simulation import run_priority_queue_simulation
@@ -1455,7 +1619,7 @@ if __name__ == "__main__":
                 if gen_id < 3 and (gen_id + 1) in train_config:
                     agent_for_data = get_agent(ALGO_TO_RUN)
                     agent_for_data.load(final_path)
-                    simulation_func(NUM_PATIENTS, agent_for_data, f"{queue_prefix}_gen_{gen_id}", EVAL_SEED, ALGO_TO_RUN, gen_id)
+                    simulation_func(NUM_PATIENTS, agent_for_data, f"{queue_prefix}_gen_{gen_id}", EVAL_SEED, queue_prefix, gen_id)
         
         print(f"\n🎉 {ALGO_TO_RUN} Training Cycle Complete!")
         sys.exit(0)

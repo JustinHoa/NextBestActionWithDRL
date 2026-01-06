@@ -182,7 +182,7 @@ class PenaltyEnv:
         # Reward Calculation
         if np.array_equal(self.blanks, self.goal_mask):
             reward = self.WIN_REWARD
-            MAX_TIME = 800.0
+            MAX_TIME = 1200.0
             total = min(self.total_time, MAX_TIME)
             time_bonus = 100.0 - (total / MAX_TIME) * 100.0
             reward += time_bonus

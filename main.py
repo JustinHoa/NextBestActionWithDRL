@@ -19,12 +19,39 @@ from agents.per_dqn_agent import PerDqnAgent
 from agents.multi_step_dqn_agent import MultiStepDqnAgent
 from agents.learning_to_act_agent import LearningToActAgent
 from agents.penalty_dqn_agent import PenaltyDQNAgent
+from agents.static_queue_dqn_agent import StaticQueueDQNAgent
+from agents.dynamic_queue_dqn_agent import DynamicQueueDQNAgent
+from agents.priority_queue_dqn_agent import PriorityQueueDQNAgent
+from agents.static_queue_ddqn_agent import StaticQueueDDQNAgent
+from agents.dynamic_queue_ddqn_agent import DynamicQueueDDQNAgent
+from agents.priority_queue_ddqn_agent import PriorityQueueDDQNAgent
+from agents.static_queue_dueling_agent import StaticQueueDuelingAgent
+from agents.dynamic_queue_dueling_agent import DynamicQueueDuelingAgent
+from agents.priority_queue_dueling_agent import PriorityQueueDuelingAgent
+from agents.static_queue_per_agent import StaticQueuePerAgent
+from agents.dynamic_queue_per_agent import DynamicQueuePerAgent
+from agents.priority_queue_per_agent import PriorityQueuePerAgent
+from agents.static_queue_rainbow_agent import StaticQueueRainbowAgent
+from agents.dynamic_queue_rainbow_agent import DynamicQueueRainbowAgent
+from agents.priority_queue_rainbow_agent import PriorityQueueRainbowAgent
+from agents.static_queue_multistep_agent import StaticQueueMultiStepAgent
+from agents.dynamic_queue_multistep_agent import DynamicQueueMultiStepAgent
+from agents.priority_queue_multistep_agent import PriorityQueueMultiStepAgent
 from agents.forlaps import run_forlaps_once as run_forlaps_once_forlaps
 from common.env import FillBlanksEnv
 from common.penalty_env import PenaltyEnv
+from common.static_queue_env import StaticQueueEnv
+from common.dynamic_queue_env import DynamicQueueEnv
+from common.priority_queue_env import PriorityQueueEnv
 from common.utils import (
     ACTION_SIZE,
     STATE_SIZE,
+    STATE_SIZE_STATIC_QUEUE,
+    ACTION_SIZE_STATIC_QUEUE,
+    STATE_SIZE_DYNAMIC_QUEUE,
+    ACTION_SIZE_DYNAMIC_QUEUE,
+    STATE_SIZE_PRIORITY_QUEUE,
+    ACTION_SIZE_PRIORITY_QUEUE,
     DEVICE,
     get_train_config,
     append_to_pickle,
@@ -106,6 +133,49 @@ def get_agent(algo_name: str):
         return LearningToActAgent(STATE_SIZE, ACTION_SIZE)
     if algo_name == "PenaltyDQN":
         return PenaltyDQNAgent(STATE_SIZE, ACTION_SIZE)
+    
+    # Static Queue Variants
+    if algo_name == "StaticQueueDQN":
+        return StaticQueueDQNAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    if algo_name == "StaticQueueDDQN":
+        return StaticQueueDDQNAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    if algo_name == "StaticQueueDueling":
+        return StaticQueueDuelingAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    if algo_name == "StaticQueuePerDQN":
+        return StaticQueuePerAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    if algo_name == "StaticQueueRainbow":
+        return StaticQueueRainbowAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    if algo_name == "StaticQueueMultiStepDQN":
+        return StaticQueueMultiStepAgent(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE)
+    
+    # Dynamic Queue Variants
+    if algo_name == "DynamicQueueDQN":
+        return DynamicQueueDQNAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    if algo_name == "DynamicQueueDDQN":
+        return DynamicQueueDDQNAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    if algo_name == "DynamicQueueDueling":
+        return DynamicQueueDuelingAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    if algo_name == "DynamicQueuePerDQN":
+        return DynamicQueuePerAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    if algo_name == "DynamicQueueRainbow":
+        return DynamicQueueRainbowAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    if algo_name == "DynamicQueueMultiStepDQN":
+        return DynamicQueueMultiStepAgent(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE)
+    
+    # Priority Queue Variants
+    if algo_name == "PriorityQueueDQN":
+        return PriorityQueueDQNAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    if algo_name == "PriorityQueueDDQN":
+        return PriorityQueueDDQNAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    if algo_name == "PriorityQueueDueling":
+        return PriorityQueueDuelingAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    if algo_name == "PriorityQueuePerDQN":
+        return PriorityQueuePerAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    if algo_name == "PriorityQueueRainbow":
+        return PriorityQueueRainbowAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    if algo_name == "PriorityQueueMultiStepDQN":
+        return PriorityQueueMultiStepAgent(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE)
+    
     raise ValueError(f"Unknown algorithm: {algo_name}")
 
 
@@ -328,8 +398,8 @@ def train_penalty_dqn(agent, num_patients: int):
         if i_episode % 100 == 0:
             tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
         
-        # Save checkpoints every 10k episodes
-        if i_episode % 10000 == 0:
+        # Save checkpoints every 1k episodes
+        if i_episode % 1000 == 0:
             ckpt_name = f"checkpoint_{num_patients}_gen_1_{i_episode}.pth"
             ckpt_path = os.path.join(log_dir, ckpt_name)
             agent.save(ckpt_path)
@@ -347,6 +417,234 @@ def train_penalty_dqn(agent, num_patients: int):
         f"Training Time: {train_minutes:.2f} minutes\n",
         num_patients=num_patients,
     )
+    
+    return ckpt_paths
+
+
+def train_static_queue_dqn(agent, num_patients: int, gen_id: int, train_config: dict):
+    """Train StaticQueueDQN with fixed queue constraints."""
+    algo_name = "StaticQueueDQN"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    
+    config = train_config[gen_id]
+    
+    # Load previous model if specified
+    if config.get("load_model"):
+        model_path = os.path.join(log_dir, config["load_model"])
+        if os.path.exists(model_path):
+            agent.load(model_path)
+            print(f"✅ Loaded model: {config['load_model']}")
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 STARTING TRAINING: [StaticQueueDQN Gen {gen_id}]")
+    print(f"   Description: {config['description']}")
+    print(f"   Episodes: {config['episodes']}")
+    print(f"   Data: {config['data_file']}")
+    print(f"{'='*60}\n")
+    
+    env = StaticQueueEnv(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE, 
+                         data_path=config["data_file"])
+    
+    scores_window = deque(maxlen=100)
+    all_scores, all_losses = [], []
+    eps = config["eps_start"]
+    ckpt_paths = []
+    t0 = time.time()
+    
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training StaticQueueDQN Gen {gen_id}")
+    for i_episode in tqdm_bar:
+        state = env.reset()
+        score = 0
+        for _ in range(30):
+            mask = env.get_action_mask()
+            action = agent.act(state, mask=mask, eps=eps)
+            next_state, reward, done = env.step(action)
+            next_mask = env.get_action_mask()
+            
+            loss = agent.step(state, action, reward, next_state, done, next_mask=next_mask)
+            if loss is not None:
+                all_losses.append(loss)
+            
+            state = next_state
+            score += reward
+            if done:
+                break
+        
+        scores_window.append(score)
+        all_scores.append(score)
+        eps = max(config["eps_end"], eps * config["eps_decay"])
+        
+        if i_episode % 100 == 0:
+            tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
+        
+        if i_episode % 1000 == 0:
+            ckpt_name = f"checkpoint_{num_patients}_gen_{gen_id}_{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
+    
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir, num_patients=num_patients)
+    
+    _append_note(log_dir, f"Episode: {config['episodes']} episode\n"
+                          f"Training Time: {train_minutes:.2f} minutes\n", 
+                 num_patients=num_patients)
+    
+    return ckpt_paths
+
+
+def train_dynamic_queue_dqn(agent, num_patients: int, gen_id: int, train_config: dict):
+    """Train DynamicQueueDQN with adaptive queue expansion."""
+    algo_name = "DynamicQueueDQN"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    
+    config = train_config[gen_id]
+    
+    # Load previous model if specified
+    if config.get("load_model"):
+        model_path = os.path.join(log_dir, config["load_model"])
+        if os.path.exists(model_path):
+            agent.load(model_path)
+            print(f"✅ Loaded model: {config['load_model']}")
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 STARTING TRAINING: [DynamicQueueDQN Gen {gen_id}]")
+    print(f"   Description: {config['description']}")
+    print(f"   Episodes: {config['episodes']}")
+    print(f"   Data: {config['data_file']}")
+    print(f"{'='*60}\n")
+    
+    env = DynamicQueueEnv(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE, 
+                          data_path=config["data_file"])
+    
+    scores_window = deque(maxlen=100)
+    all_scores, all_losses = [], []
+    eps = config["eps_start"]
+    ckpt_paths = []
+    t0 = time.time()
+    
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training DynamicQueueDQN Gen {gen_id}")
+    for i_episode in tqdm_bar:
+        state = env.reset()
+        score = 0
+        for _ in range(30):
+            mask = env.get_action_mask()
+            action = agent.act(state, mask=mask, eps=eps)
+            next_state, reward, done = env.step(action)
+            next_mask = env.get_action_mask()
+            
+            loss = agent.step(state, action, reward, next_state, done, next_mask=next_mask)
+            if loss is not None:
+                all_losses.append(loss)
+            
+            state = next_state
+            score += reward
+            if done:
+                break
+        
+        scores_window.append(score)
+        all_scores.append(score)
+        eps = max(config["eps_end"], eps * config["eps_decay"])
+        
+        if i_episode % 100 == 0:
+            tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
+        
+        if i_episode % 1000 == 0:
+            ckpt_name = f"checkpoint_{num_patients}_gen_{gen_id}_{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
+    
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir, num_patients=num_patients)
+    
+    _append_note(log_dir, f"Episode: {config['episodes']} episode\n"
+                          f"Training Time: {train_minutes:.2f} minutes\n", 
+                 num_patients=num_patients)
+    
+    return ckpt_paths
+
+
+def train_priority_queue_dqn(agent, num_patients: int, gen_id: int, train_config: dict):
+    """Train PriorityQueueDQN with emergency patient handling."""
+    algo_name = "PriorityQueueDQN"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    
+    config = train_config[gen_id]
+    
+    # Load previous model if specified
+    if config.get("load_model"):
+        model_path = os.path.join(log_dir, config["load_model"])
+        if os.path.exists(model_path):
+            agent.load(model_path)
+            print(f"✅ Loaded model: {config['load_model']}")
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 STARTING TRAINING: [PriorityQueueDQN Gen {gen_id}]")
+    print(f"   Description: {config['description']}")
+    print(f"   Episodes: {config['episodes']}")
+    print(f"   Data: {config['data_file']}")
+    print(f"{'='*60}\n")
+    
+    env = PriorityQueueEnv(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE, 
+                           data_path=config["data_file"])
+    
+    scores_window = deque(maxlen=100)
+    all_scores, all_losses = [], []
+    eps = config["eps_start"]
+    ckpt_paths = []
+    t0 = time.time()
+    
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training PriorityQueueDQN Gen {gen_id}")
+    for i_episode in tqdm_bar:
+        state = env.reset()
+        score = 0
+        for _ in range(30):
+            mask = env.get_action_mask()
+            action = agent.act(state, mask=mask, eps=eps)
+            next_state, reward, done = env.step(action)
+            next_mask = env.get_action_mask()
+            
+            loss = agent.step(state, action, reward, next_state, done, next_mask=next_mask)
+            if loss is not None:
+                all_losses.append(loss)
+            
+            state = next_state
+            score += reward
+            if done:
+                break
+        
+        scores_window.append(score)
+        all_scores.append(score)
+        eps = max(config["eps_end"], eps * config["eps_decay"])
+        
+        if i_episode % 100 == 0:
+            tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
+        
+        if i_episode % 1000 == 0:
+            ckpt_name = f"checkpoint_{num_patients}_gen_{gen_id}_{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
+    
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir, num_patients=num_patients)
+    
+    _append_note(log_dir, f"Episode: {config['episodes']} episode\n"
+                          f"Training Time: {train_minutes:.2f} minutes\n", 
+                 num_patients=num_patients)
     
     return ckpt_paths
 
@@ -480,7 +778,6 @@ def train_one_generation(agent, algo_name: str, gen_id: int, train_config, num_p
 
     _append_note(
         log_dir,
-        f"Episode: {config['episodes']} episode\n"
         f"Training Time: {train_minutes:.2f} minutes\n",
         num_patients=num_patients,
     )
@@ -488,11 +785,96 @@ def train_one_generation(agent, algo_name: str, gen_id: int, train_config, num_p
     return ckpt_paths
 
 
-def _parse_checkpoint_episode(path: str) -> int:
-    """Parse episode number from checkpoint filename."""
-    import re
-    m = re.search(r"_(\d+)\.pth$", os.path.basename(path))
-    return int(m.group(1)) if m else -1
+def train_queue_variant_generic(agent, algo_name: str, num_patients: int, gen_id: int, train_config: dict, queue_type: str):
+    """
+    Generic training function for all queue variants (Static/Dynamic/Priority).
+    
+    Args:
+        agent: Agent instance
+        algo_name: Algorithm name (e.g., "StaticQueueDDQN")
+        num_patients: Number of patients
+        gen_id: Generation ID
+        train_config: Training configuration dict
+        queue_type: "static", "dynamic", or "priority"
+    """
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    
+    config = train_config[gen_id]
+    
+    # Load previous model if specified
+    if config.get("load_model"):
+        model_path = os.path.join(log_dir, config["load_model"])
+        if os.path.exists(model_path):
+            agent.load(model_path)
+            print(f"✅ Loaded model: {config['load_model']}")
+    
+    print(f"\n{'='*60}")
+    print(f"🚀 STARTING TRAINING: [{algo_name} Gen {gen_id}]")
+    print(f"   Description: {config['description']}")
+    print(f"   Episodes: {config['episodes']}")
+    print(f"   Data: {config['data_file']}")
+    print(f"{'='*60}\n")
+    
+    # Create appropriate environment based on queue type
+    if queue_type == "static":
+        env = StaticQueueEnv(STATE_SIZE_STATIC_QUEUE, ACTION_SIZE_STATIC_QUEUE, data_path=config["data_file"])
+    elif queue_type == "dynamic":
+        env = DynamicQueueEnv(STATE_SIZE_DYNAMIC_QUEUE, ACTION_SIZE_DYNAMIC_QUEUE, data_path=config["data_file"])
+    elif queue_type == "priority":
+        env = PriorityQueueEnv(STATE_SIZE_PRIORITY_QUEUE, ACTION_SIZE_PRIORITY_QUEUE, data_path=config["data_file"])
+    else:
+        raise ValueError(f"Unknown queue_type: {queue_type}")
+    
+    scores_window = deque(maxlen=100)
+    all_scores, all_losses = [], []
+    eps = config["eps_start"]
+    ckpt_paths = []
+    t0 = time.time()
+    
+    tqdm_bar = tqdm(range(1, config["episodes"] + 1), desc=f"Training {algo_name} Gen {gen_id}")
+    for i_episode in tqdm_bar:
+        state = env.reset()
+        score = 0
+        for _ in range(30):
+            mask = env.get_action_mask()
+            action = agent.act(state, mask=mask, eps=eps)
+            next_state, reward, done = env.step(action)
+            next_mask = env.get_action_mask()
+            
+            loss = agent.step(state, action, reward, next_state, done, next_mask=next_mask)
+            if loss is not None:
+                all_losses.append(loss)
+            
+            state = next_state
+            score += reward
+            if done:
+                break
+        
+        scores_window.append(score)
+        all_scores.append(score)
+        eps = max(config["eps_end"], eps * config["eps_decay"])
+        
+        if i_episode % 100 == 0:
+            tqdm_bar.set_postfix(avg_score=f"{np.mean(scores_window):.2f}", eps=f"{eps:.3f}")
+        
+        if i_episode % 1000 == 0:
+            ckpt_name = f"checkpoint_{num_patients}_gen_{gen_id}_{i_episode}.pth"
+            ckpt_path = os.path.join(log_dir, ckpt_name)
+            agent.save(ckpt_path)
+            ckpt_paths.append(ckpt_path)
+            tqdm_bar.write(f"💾 Checkpoint saved: {ckpt_name}")
+    
+    train_seconds = time.time() - t0
+    train_minutes = train_seconds / 60.0
+    
+    plot_training_status(all_scores, all_losses, algo_name, gen_id, save_dir=log_dir, num_patients=num_patients)
+    
+    _append_note(log_dir, f"Episode: {config['episodes']} episode\n"
+                          f"Training Time: {train_minutes:.2f} minutes\n", 
+                 num_patients=num_patients)
+    
+    return ckpt_paths
 
 
 def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, baseline_avg_time: float, num_patients: int):
@@ -532,7 +914,16 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
     return best, results
 
 
-SUPPORTED_ALGOS = ["DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", "FORLAPS", "LearningToAct", "PenaltyDQN"]
+SUPPORTED_ALGOS = [
+    "DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", 
+    "FORLAPS", "LearningToAct", "PenaltyDQN",
+    # Static Queue Variants
+    "StaticQueueDQN", "StaticQueueDDQN", "StaticQueueDueling", "StaticQueuePerDQN", "StaticQueueRainbow", "StaticQueueMultiStepDQN",
+    # Dynamic Queue Variants
+    "DynamicQueueDQN", "DynamicQueueDDQN", "DynamicQueueDueling", "DynamicQueuePerDQN", "DynamicQueueRainbow", "DynamicQueueMultiStepDQN",
+    # Priority Queue Variants
+    "PriorityQueueDQN", "PriorityQueueDDQN", "PriorityQueueDueling", "PriorityQueuePerDQN", "PriorityQueueRainbow", "PriorityQueueMultiStepDQN"
+]
 
 
 def _append_note(log_dir: str, text: str, num_patients: int = 200) -> None:
@@ -669,10 +1060,407 @@ if __name__ == "__main__":
         print(f"   Best VALID checkpoint ep={best_valid_ep} | Avg Time: {best_valid_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
         sys.exit(0)
 
+    # Special-case StaticQueueDQN: multi-generation training with static queue simulation
+    if ALGO_TO_RUN == "StaticQueueDQN":
+        from simulation.static_queue_simulation import run_static_queue_simulation
+        
+        agent = get_agent(ALGO_TO_RUN)
+        log_dir = os.path.join("logs", ALGO_TO_RUN)
+        ensure_dir(log_dir)
+        _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
+        
+        # Get baseline using STATIC QUEUE random simulation
+        random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_staticqueue_random_base.csv")
+        if os.path.exists(random_base_queue_log):
+            print(f"✅ Found existing static queue random_base: {random_base_queue_log}")
+            baseline_avg_time = run_static_queue_simulation(NUM_PATIENTS, None, "staticqueue_random_base_eval", EVAL_SEED, "Random", 0)
+        else:
+            print(f"⚠️ Static queue random_base not found. Generating...")
+            baseline_avg_time = run_static_queue_simulation(NUM_PATIENTS, None, "staticqueue_random_base", EVAL_SEED, "Random", 0)
+        
+        _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
+        
+        prev_best_avg_time = None
+        train_config = get_train_config(ALGO_TO_RUN, NUM_PATIENTS)
+        
+        # Multi-generation training loop
+        for gen_id in range(1, 4):  # Gen 1-3
+            if gen_id not in train_config:
+                break
+            
+            _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+            
+            # Train one generation
+            ckpt_paths = train_static_queue_dqn(agent, NUM_PATIENTS, gen_id, train_config)
+            
+            if not ckpt_paths:
+                _append_note(log_dir, f"Gen {gen_id}: No checkpoints produced.\n", num_patients=NUM_PATIENTS)
+                continue
+            
+            # Evaluate all checkpoints
+            _append_note(log_dir, f"\n====\nGEN {gen_id} CHECKPOINT EVALUATION\n", num_patients=NUM_PATIENTS)
+            
+            best_ckpt = None
+            best_avg_time = None
+            best_ep = None
+            
+            for ckpt_path in ckpt_paths:
+                ep = _parse_checkpoint_episode(ckpt_path)
+                agent_eval = get_agent(ALGO_TO_RUN)
+                agent_eval.load(ckpt_path)
+                
+                avg_time = run_static_queue_simulation(NUM_PATIENTS, agent_eval, f"staticqueue_g{gen_id}_ep{ep}", EVAL_SEED, "StaticQueueDQN", gen_id)
+                improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                
+                _append_note(log_dir, f"Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"  Gen {gen_id} Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%")
+                
+                if best_avg_time is None or avg_time < best_avg_time:
+                    best_avg_time = avg_time
+                    best_ckpt = ckpt_path
+                    best_ep = ep
+            
+            # Save best checkpoint as final for this generation
+            if best_ckpt:
+                final_name = f"final_{NUM_PATIENTS}_gen_{gen_id}.pth"
+                final_path = os.path.join(log_dir, final_name)
+                shutil.copyfile(best_ckpt, final_path)
+                
+                improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                _append_note(log_dir, f"Gen {gen_id} Final: ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"✅ Gen {gen_id} Complete: Best ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
+                
+                # Check early stopping
+                if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
+                    _append_note(log_dir, f"STOP: Gen {gen_id} ({best_avg_time:.2f}) >= Gen {gen_id-1} ({prev_best_avg_time:.2f})\n", num_patients=NUM_PATIENTS)
+                    print(f"🛑 Early stopping: Gen {gen_id} did not improve.")
+                    break
+                
+                prev_best_avg_time = best_avg_time
+                
+                # Generate data for next generation
+                if gen_id < 3 and (gen_id + 1) in train_config:
+                    agent_for_data = get_agent(ALGO_TO_RUN)
+                    agent_for_data.load(final_path)
+                    run_static_queue_simulation(NUM_PATIENTS, agent_for_data, f"staticqueue_gen_{gen_id}", EVAL_SEED, "StaticQueueDQN", gen_id)
+        
+        print(f"\n🎉 StaticQueueDQN Training Cycle Complete!")
+        sys.exit(0)
+    
+    # Special-case DynamicQueueDQN: multi-generation training with dynamic queue simulation
+    if ALGO_TO_RUN == "DynamicQueueDQN":
+        from simulation.dynamic_queue_simulation import run_dynamic_queue_simulation
+        
+        agent = get_agent(ALGO_TO_RUN)
+        log_dir = os.path.join("logs", ALGO_TO_RUN)
+        ensure_dir(log_dir)
+        _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
+        
+        # Get baseline using DYNAMIC QUEUE random simulation
+        random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_dynamicqueue_random_base.csv")
+        if os.path.exists(random_base_queue_log):
+            print(f"✅ Found existing dynamic queue random_base: {random_base_queue_log}")
+            baseline_avg_time = run_dynamic_queue_simulation(NUM_PATIENTS, None, "dynamicqueue_random_base_eval", EVAL_SEED, "Random", 0)
+        else:
+            print(f"⚠️ Dynamic queue random_base not found. Generating...")
+            baseline_avg_time = run_dynamic_queue_simulation(NUM_PATIENTS, None, "dynamicqueue_random_base", EVAL_SEED, "Random", 0)
+        
+        _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
+        
+        prev_best_avg_time = None
+        train_config = get_train_config(ALGO_TO_RUN, NUM_PATIENTS)
+        
+        # Multi-generation training loop
+        for gen_id in range(1, 4):  # Gen 1-3
+            if gen_id not in train_config:
+                break
+            
+            _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+            
+            # Train one generation
+            ckpt_paths = train_dynamic_queue_dqn(agent, NUM_PATIENTS, gen_id, train_config)
+            
+            if not ckpt_paths:
+                _append_note(log_dir, f"Gen {gen_id}: No checkpoints produced.\n", num_patients=NUM_PATIENTS)
+                continue
+            
+            # Evaluate all checkpoints
+            _append_note(log_dir, f"\n====\nGEN {gen_id} CHECKPOINT EVALUATION\n", num_patients=NUM_PATIENTS)
+            
+            best_ckpt = None
+            best_avg_time = None
+            best_ep = None
+            
+            for ckpt_path in ckpt_paths:
+                ep = _parse_checkpoint_episode(ckpt_path)
+                agent_eval = get_agent(ALGO_TO_RUN)
+                agent_eval.load(ckpt_path)
+                
+                avg_time = run_dynamic_queue_simulation(NUM_PATIENTS, agent_eval, f"dynamicqueue_g{gen_id}_ep{ep}", EVAL_SEED, "DynamicQueueDQN", gen_id)
+                improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                
+                _append_note(log_dir, f"Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"  Gen {gen_id} Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%")
+                
+                if best_avg_time is None or avg_time < best_avg_time:
+                    best_avg_time = avg_time
+                    best_ckpt = ckpt_path
+                    best_ep = ep
+            
+            # Save best checkpoint as final for this generation
+            if best_ckpt:
+                final_name = f"final_{NUM_PATIENTS}_gen_{gen_id}.pth"
+                final_path = os.path.join(log_dir, final_name)
+                shutil.copyfile(best_ckpt, final_path)
+                
+                improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                _append_note(log_dir, f"Gen {gen_id} Final: ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"✅ Gen {gen_id} Complete: Best ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
+                
+                # Check early stopping
+                if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
+                    _append_note(log_dir, f"STOP: Gen {gen_id} ({best_avg_time:.2f}) >= Gen {gen_id-1} ({prev_best_avg_time:.2f})\n", num_patients=NUM_PATIENTS)
+                    print(f"🛑 Early stopping: Gen {gen_id} did not improve.")
+                    break
+                
+                prev_best_avg_time = best_avg_time
+                
+                # Generate data for next generation
+                if gen_id < 3 and (gen_id + 1) in train_config:
+                    agent_for_data = get_agent(ALGO_TO_RUN)
+                    agent_for_data.load(final_path)
+                    run_dynamic_queue_simulation(NUM_PATIENTS, agent_for_data, f"dynamicqueue_gen_{gen_id}", EVAL_SEED, "DynamicQueueDQN", gen_id)
+        
+        print(f"\n🎉 DynamicQueueDQN Training Cycle Complete!")
+        sys.exit(0)
+
+    # Special-case PriorityQueueDQN: multi-generation training with priority queue simulation
+    if ALGO_TO_RUN == "PriorityQueueDQN":
+        from simulation.priority_queue_simulation import run_priority_queue_simulation
+        
+        agent = get_agent(ALGO_TO_RUN)
+        log_dir = os.path.join("logs", ALGO_TO_RUN)
+        ensure_dir(log_dir)
+        _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
+        
+        # Get baseline using PRIORITY QUEUE random simulation
+        random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_priorityqueue_random_base.csv")
+        if os.path.exists(random_base_queue_log):
+            print(f"✅ Found existing priority queue random_base: {random_base_queue_log}")
+            baseline_metrics = run_priority_queue_simulation(NUM_PATIENTS, None, "priorityqueue_random_base_eval", EVAL_SEED, "Random", 0)
+        else:
+            print(f"⚠️ Priority queue random_base not found. Generating...")
+            baseline_metrics = run_priority_queue_simulation(NUM_PATIENTS, None, "priorityqueue_random_base", EVAL_SEED, "Random", 0)
+        
+        baseline_avg_time = baseline_metrics['overall_avg_time']
+        _append_note(log_dir, f"Random base Overall Avg Time: {baseline_metrics['overall_avg_time']:.2f}\n", num_patients=NUM_PATIENTS)
+        _append_note(log_dir, f"  Normal Patients ({baseline_metrics['normal_count']}): Avg Time={baseline_metrics['normal_avg_time']:.2f}\n", num_patients=NUM_PATIENTS)
+        _append_note(log_dir, f"  Emergency Patients ({baseline_metrics['emergency_count']}): Avg Time={baseline_metrics['emergency_avg_time']:.2f} | Avg Wait={baseline_metrics['emergency_avg_wait']:.2f}\n", num_patients=NUM_PATIENTS)
+        
+        prev_best_avg_time = None
+        train_config = get_train_config(ALGO_TO_RUN, NUM_PATIENTS)
+        
+        # Multi-generation training loop
+        for gen_id in range(1, 4):  # Gen 1-3
+            if gen_id not in train_config:
+                break
+            
+            _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+            
+            # Train one generation
+            ckpt_paths = train_priority_queue_dqn(agent, NUM_PATIENTS, gen_id, train_config)
+            
+            if not ckpt_paths:
+                _append_note(log_dir, f"Gen {gen_id}: No checkpoints produced.\n", num_patients=NUM_PATIENTS)
+                continue
+            
+            # Evaluate all checkpoints
+            _append_note(log_dir, f"\n====\nGEN {gen_id} CHECKPOINT EVALUATION\n", num_patients=NUM_PATIENTS)
+            
+            best_ckpt = None
+            best_avg_time = None
+            best_ep = None
+            
+            for ckpt_path in ckpt_paths:
+                ep = _parse_checkpoint_episode(ckpt_path)
+                agent_eval = get_agent(ALGO_TO_RUN)
+                agent_eval.load(ckpt_path)
+                
+                metrics = run_priority_queue_simulation(NUM_PATIENTS, agent_eval, f"priorityqueue_g{gen_id}_ep{ep}", EVAL_SEED, "PriorityQueueDQN", gen_id)
+                avg_time = metrics['overall_avg_time']
+                improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                
+                _append_note(log_dir, f"Checkpoint ep={ep}: Overall Avg={avg_time:.2f} | Improvement={improvement:+.2f}%\n", num_patients=NUM_PATIENTS)
+                _append_note(log_dir, f"  Normal ({metrics['normal_count']}): {metrics['normal_avg_time']:.2f} | Emergency ({metrics['emergency_count']}): {metrics['emergency_avg_time']:.2f} | Emerg Wait: {metrics['emergency_avg_wait']:.2f}\n", num_patients=NUM_PATIENTS)
+                print(f"  Gen {gen_id} Checkpoint ep={ep}: Overall={avg_time:.2f} | Normal={metrics['normal_avg_time']:.2f} | Emerg={metrics['emergency_avg_time']:.2f} | Wait={metrics['emergency_avg_wait']:.2f}")
+                
+                if best_avg_time is None or avg_time < best_avg_time:
+                    best_avg_time = avg_time
+                    best_ckpt = ckpt_path
+                    best_ep = ep
+            
+            # Save best checkpoint as final for this generation
+            if best_ckpt:
+                final_name = f"final_{NUM_PATIENTS}_gen_{gen_id}.pth"
+                final_path = os.path.join(log_dir, final_name)
+                shutil.copyfile(best_ckpt, final_path)
+                
+                improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                _append_note(log_dir, f"Gen {gen_id} Final: ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"✅ Gen {gen_id} Complete: Best ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
+                
+                # Check early stopping
+                if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
+                    _append_note(log_dir, f"STOP: Gen {gen_id} ({best_avg_time:.2f}) >= Gen {gen_id-1} ({prev_best_avg_time:.2f})\n", num_patients=NUM_PATIENTS)
+                    print(f"🛑 Early stopping: Gen {gen_id} did not improve.")
+                    break
+                
+                prev_best_avg_time = best_avg_time
+                
+                # Generate data for next generation
+                if gen_id < 3 and (gen_id + 1) in train_config:
+                    agent_for_data = get_agent(ALGO_TO_RUN)
+                    agent_for_data.load(final_path)
+                    run_priority_queue_simulation(NUM_PATIENTS, agent_for_data, f"priorityqueue_gen_{gen_id}", EVAL_SEED, "PriorityQueueDQN", gen_id)
+        
+        print(f"\n🎉 PriorityQueueDQN Training Cycle Complete!")
+        sys.exit(0)
+    
+    # Generic handler for all queue variants (Static/Dynamic/Priority for DDQN, Dueling, PerDQN, Rainbow, MultiStepDQN)
+    queue_variants = {
+        # Static Queue Variants
+        "StaticQueueDDQN": ("static", "staticqueue"),
+        "StaticQueueDueling": ("static", "staticqueue"),
+        "StaticQueuePerDQN": ("static", "staticqueue"),
+        "StaticQueueRainbow": ("static", "staticqueue"),
+        "StaticQueueMultiStepDQN": ("static", "staticqueue"),
+        # Dynamic Queue Variants
+        "DynamicQueueDDQN": ("dynamic", "dynamicqueue"),
+        "DynamicQueueDueling": ("dynamic", "dynamicqueue"),
+        "DynamicQueuePerDQN": ("dynamic", "dynamicqueue"),
+        "DynamicQueueRainbow": ("dynamic", "dynamicqueue"),
+        "DynamicQueueMultiStepDQN": ("dynamic", "dynamicqueue"),
+        # Priority Queue Variants
+        "PriorityQueueDDQN": ("priority", "priorityqueue"),
+        "PriorityQueueDueling": ("priority", "priorityqueue"),
+        "PriorityQueuePerDQN": ("priority", "priorityqueue"),
+        "PriorityQueueRainbow": ("priority", "priorityqueue"),
+        "PriorityQueueMultiStepDQN": ("priority", "priorityqueue"),
+    }
+    
+    if ALGO_TO_RUN in queue_variants:
+        queue_type, queue_prefix = queue_variants[ALGO_TO_RUN]
+        
+        # Import appropriate simulation function
+        if queue_type == "static":
+            from simulation.static_queue_simulation import run_static_queue_simulation
+            simulation_func = run_static_queue_simulation
+        elif queue_type == "dynamic":
+            from simulation.dynamic_queue_simulation import run_dynamic_queue_simulation
+            simulation_func = run_dynamic_queue_simulation
+        elif queue_type == "priority":
+            from simulation.priority_queue_simulation import run_priority_queue_simulation
+            simulation_func = run_priority_queue_simulation
+        
+        agent = get_agent(ALGO_TO_RUN)
+        log_dir = os.path.join("logs", ALGO_TO_RUN)
+        ensure_dir(log_dir)
+        _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)
+        
+        # Get baseline using appropriate queue simulation
+        random_base_queue_log = os.path.join("data", "raw", f"queue_log_{NUM_PATIENTS}_{queue_prefix}_random_base.csv")
+        if os.path.exists(random_base_queue_log):
+            print(f"✅ Found existing {queue_type} queue random_base: {random_base_queue_log}")
+            if queue_type == "priority":
+                metrics = simulation_func(NUM_PATIENTS, None, f"{queue_prefix}_random_base_eval", EVAL_SEED, "Random", 0)
+                baseline_avg_time = metrics['overall_avg_time']
+            else:
+                baseline_avg_time = simulation_func(NUM_PATIENTS, None, f"{queue_prefix}_random_base_eval", EVAL_SEED, "Random", 0)
+        else:
+            print(f"⚠️ {queue_type.capitalize()} queue random_base not found. Generating...")
+            if queue_type == "priority":
+                metrics = simulation_func(NUM_PATIENTS, None, f"{queue_prefix}_random_base", EVAL_SEED, "Random", 0)
+                baseline_avg_time = metrics['overall_avg_time']
+            else:
+                baseline_avg_time = simulation_func(NUM_PATIENTS, None, f"{queue_prefix}_random_base", EVAL_SEED, "Random", 0)
+        
+        _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients=NUM_PATIENTS)
+        
+        prev_best_avg_time = None
+        train_config = get_train_config(ALGO_TO_RUN, NUM_PATIENTS)
+        
+        # Multi-generation training loop
+        for gen_id in range(1, 4):  # Gen 1-3
+            if gen_id not in train_config:
+                break
+            
+            _append_note(log_dir, "====\n", num_patients=NUM_PATIENTS)
+            
+            # Train one generation using generic function
+            ckpt_paths = train_queue_variant_generic(agent, ALGO_TO_RUN, NUM_PATIENTS, gen_id, train_config, queue_type)
+            
+            if not ckpt_paths:
+                _append_note(log_dir, f"Gen {gen_id}: No checkpoints produced.\n", num_patients=NUM_PATIENTS)
+                continue
+            
+            # Evaluate all checkpoints
+            _append_note(log_dir, f"\n====\nGEN {gen_id} CHECKPOINT EVALUATION\n", num_patients=NUM_PATIENTS)
+            
+            best_ckpt = None
+            best_avg_time = None
+            best_ep = None
+            
+            for ckpt_path in ckpt_paths:
+                ep = _parse_checkpoint_episode(ckpt_path)
+                agent_eval = get_agent(ALGO_TO_RUN)
+                agent_eval.load(ckpt_path)
+                
+                if queue_type == "priority":
+                    metrics = simulation_func(NUM_PATIENTS, agent_eval, f"{queue_prefix}_g{gen_id}_ep{ep}", EVAL_SEED, ALGO_TO_RUN, gen_id)
+                    avg_time = metrics['overall_avg_time']
+                    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                    _append_note(log_dir, f"Checkpoint ep={ep}: Overall Avg={avg_time:.2f} | Improvement={improvement:+.2f}%\n", num_patients=NUM_PATIENTS)
+                    _append_note(log_dir, f"  Normal ({metrics['normal_count']}): {metrics['normal_avg_time']:.2f} | Emergency ({metrics['emergency_count']}): {metrics['emergency_avg_time']:.2f} | Emerg Wait: {metrics['emergency_avg_wait']:.2f}\n", num_patients=NUM_PATIENTS)
+                    print(f"  Gen {gen_id} Checkpoint ep={ep}: Overall={avg_time:.2f} | Normal={metrics['normal_avg_time']:.2f} | Emerg={metrics['emergency_avg_time']:.2f} | Wait={metrics['emergency_avg_wait']:.2f}")
+                else:
+                    avg_time = simulation_func(NUM_PATIENTS, agent_eval, f"{queue_prefix}_g{gen_id}_ep{ep}", EVAL_SEED, ALGO_TO_RUN, gen_id)
+                    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                    _append_note(log_dir, f"Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%\n", num_patients=NUM_PATIENTS)
+                    print(f"  Gen {gen_id} Checkpoint ep={ep}: Avg Time={avg_time:.2f} | Improvement={improvement:+.2f}%")
+                
+                if best_avg_time is None or avg_time < best_avg_time:
+                    best_avg_time = avg_time
+                    best_ckpt = ckpt_path
+                    best_ep = ep
+            
+            # Save best checkpoint as final for this generation
+            if best_ckpt:
+                final_name = f"final_{NUM_PATIENTS}_gen_{gen_id}.pth"
+                final_path = os.path.join(log_dir, final_name)
+                shutil.copyfile(best_ckpt, final_path)
+                
+                improvement_pct = ((baseline_avg_time - best_avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+                _append_note(log_dir, f"Gen {gen_id} Final: ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%\n", num_patients=NUM_PATIENTS)
+                print(f"✅ Gen {gen_id} Complete: Best ep={best_ep} | Avg Time: {best_avg_time:.2f} | Improvement: {improvement_pct:+.2f}%")
+                
+                # Check early stopping
+                if prev_best_avg_time is not None and best_avg_time >= prev_best_avg_time:
+                    _append_note(log_dir, f"STOP: Gen {gen_id} ({best_avg_time:.2f}) >= Gen {gen_id-1} ({prev_best_avg_time:.2f})\n", num_patients=NUM_PATIENTS)
+                    print(f"🛑 Early stopping: Gen {gen_id} did not improve.")
+                    break
+                
+                prev_best_avg_time = best_avg_time
+                
+                # Generate data for next generation
+                if gen_id < 3 and (gen_id + 1) in train_config:
+                    agent_for_data = get_agent(ALGO_TO_RUN)
+                    agent_for_data.load(final_path)
+                    simulation_func(NUM_PATIENTS, agent_for_data, f"{queue_prefix}_gen_{gen_id}", EVAL_SEED, ALGO_TO_RUN, gen_id)
+        
+        print(f"\n🎉 {ALGO_TO_RUN} Training Cycle Complete!")
+        sys.exit(0)
+
     agent = get_agent(ALGO_TO_RUN)
-
-    print(f"--- Starting Full Training Cycle for [{ALGO_TO_RUN}] with {NUM_PATIENTS} patients ---")
-
     log_dir = os.path.join("logs", ALGO_TO_RUN)
     ensure_dir(log_dir)
     _append_note(log_dir, f"\n=== Train model: {ALGO_TO_RUN} ===\n", num_patients=NUM_PATIENTS)

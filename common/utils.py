@@ -12,6 +12,16 @@ DEVICE = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 STATE_SIZE = 45
 ACTION_SIZE = 21
 
+# Queue-constrained variants
+STATE_SIZE_STATIC_QUEUE = 66  # [gender, marital, 21 blanks, 21 waiting_times, 21 queue_utilization, 1 norm_time]
+ACTION_SIZE_STATIC_QUEUE = 22  # 21 activities + 1 mock action
+
+STATE_SIZE_DYNAMIC_QUEUE = 87  # [gender, marital, 21 blanks, 21 waiting_times, 21 queue_utilization, 21 is_expanded, 1 norm_time]
+ACTION_SIZE_DYNAMIC_QUEUE = 21  # 21 activities (no mock action)
+
+STATE_SIZE_PRIORITY_QUEUE = 86  # [gender, marital, 21 blanks, 21 queues, 21 emergency_flags, 21 mock_queues]
+ACTION_SIZE_PRIORITY_QUEUE = 22  # 21 activities + 1 mock action
+
 # --- TRAINING CONFIG ---
 _BASE_TRAIN_CONFIG = {
     1: {
@@ -85,6 +95,114 @@ _PENALTY_DQN_CONFIG = {
     },
 }
 
+_STATIC_QUEUE_DQN_CONFIG = {
+    1: {
+        "description": "StaticQueueDQN Gen 1 - Train from scratch with static queue constraints",
+        "data_file": "data/raw/queue_log_200_staticqueue_random_base.csv",
+        "episodes": 10000,
+        "lr": 1e-4,
+        "eps_start": 1.0,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": None,
+        "save_name": "final_200_gen_1.pth",
+    },
+    2: {
+        "description": "StaticQueueDQN Gen 2 - Fine-tune on Gen 1 data",
+        "data_file": "data/raw/queue_log_200_staticqueue_gen_1.csv",
+        "episodes": 8000,
+        "lr": 3e-5,
+        "eps_start": 0.5,
+        "eps_decay": 0.999,
+        "eps_end": 0.05,
+        "load_model": "final_200_gen_1.pth",
+        "save_name": "final_200_gen_2.pth",
+    },
+    3: {
+        "description": "StaticQueueDQN Gen 3 - Aggressive fine-tune",
+        "data_file": "data/raw/queue_log_200_staticqueue_gen_2.csv",
+        "episodes": 6000,
+        "lr": 1e-5,
+        "eps_start": 0.3,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": "final_200_gen_2.pth",
+        "save_name": "final_200_gen_3.pth",
+    },
+}
+
+_DYNAMIC_QUEUE_DQN_CONFIG = {
+    1: {
+        "description": "DynamicQueueDQN Gen 1 - Train from scratch with dynamic queue expansion",
+        "data_file": "data/raw/queue_log_200_dynamicqueue_random_base.csv",
+        "episodes": 10000,
+        "lr": 1e-4,
+        "eps_start": 1.0,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": None,
+        "save_name": "final_200_gen_1.pth",
+    },
+    2: {
+        "description": "DynamicQueueDQN Gen 2 - Fine-tune on Gen 1 data",
+        "data_file": "data/raw/queue_log_200_dynamicqueue_gen_1.csv",
+        "episodes": 8000,
+        "lr": 3e-5,
+        "eps_start": 0.5,
+        "eps_decay": 0.999,
+        "eps_end": 0.05,
+        "load_model": "final_200_gen_1.pth",
+        "save_name": "final_200_gen_2.pth",
+    },
+    3: {
+        "description": "DynamicQueueDQN Gen 3 - Aggressive fine-tune",
+        "data_file": "data/raw/queue_log_200_dynamicqueue_gen_2.csv",
+        "episodes": 6000,
+        "lr": 1e-5,
+        "eps_start": 0.3,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": "final_200_gen_2.pth",
+        "save_name": "final_200_gen_3.pth",
+    },
+}
+
+_PRIORITY_QUEUE_DQN_CONFIG = {
+    1: {
+        "description": "Gen 1: Train from scratch with priority queue",
+        "data_file": "data/raw/queue_log_200_random_base.csv",
+        "episodes": 10000,
+        "lr": 1e-4,
+        "eps_start": 1.0,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": None,
+        "save_name": "final_200_gen_1.pth",
+    },
+    2: {
+        "description": "Gen 2: Fine-tune on Gen 1 data",
+        "data_file": "data/raw/queue_log_200_priorityqueue_gen_1.csv",
+        "episodes": 8000,
+        "lr": 3e-5,
+        "eps_start": 0.3,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": "final_200_gen_1.pth",
+        "save_name": "final_200_gen_2.pth",
+    },
+    3: {
+        "description": "Gen 3: Aggressive fine-tune",
+        "data_file": "data/raw/queue_log_200_priorityqueue_gen_2.csv",
+        "episodes": 6000,
+        "lr": 1e-5,
+        "eps_start": 0.1,
+        "eps_decay": 0.999,
+        "eps_end": 0.01,
+        "load_model": "final_200_gen_2.pth",
+        "save_name": "final_200_gen_3.pth",
+    },
+}
+
 TRAIN_CONFIGS = {
     "DQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "DDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
@@ -93,6 +211,9 @@ TRAIN_CONFIGS = {
     "MultiStepDQN": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "Rainbow": copy.deepcopy(_BASE_TRAIN_CONFIG),
     "PenaltyDQN": copy.deepcopy(_PENALTY_DQN_CONFIG),
+    "StaticQueueDQN": copy.deepcopy(_STATIC_QUEUE_DQN_CONFIG),
+    "DynamicQueueDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "PriorityQueueDQN": copy.deepcopy(_PRIORITY_QUEUE_DQN_CONFIG),
 }
 
 
@@ -107,7 +228,12 @@ def get_train_config(algo_name: str, num_patients: int = 200) -> Dict[int, Dict[
             config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_random_base.csv"
         else:
             prev_gen = gen_id - 1
-            config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{algo_name}_gen_{prev_gen}.csv"
+            # Special handling for queue-based variants
+            if algo_name in ["StaticQueueDQN", "DynamicQueueDQN", "PriorityQueueDQN"]:
+                variant_name = algo_name.lower().replace("dqn", "")
+                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{variant_name}_gen_{prev_gen}.csv"
+            else:
+                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{algo_name}_gen_{prev_gen}.csv"
         
         # Update load_model
         if config[gen_id]["load_model"] is not None:

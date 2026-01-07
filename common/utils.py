@@ -99,7 +99,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
     1: {
         "description": "StaticQueueDQN Gen 1 - Train from scratch with static queue constraints",
         "data_file": "data/raw/queue_log_200_staticqueue_random_base.csv",
-        "episodes": 1000,
+        "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
         "eps_decay": 0.999,
@@ -110,7 +110,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
     2: {
         "description": "StaticQueueDQN Gen 2 - Fine-tune on Gen 1 data",
         "data_file": "data/raw/queue_log_200_staticqueue_gen_1.csv",
-        "episodes": 800,
+        "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.5,
         "eps_decay": 0.999,
@@ -121,7 +121,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
     3: {
         "description": "StaticQueueDQN Gen 3 - Aggressive fine-tune",
         "data_file": "data/raw/queue_log_200_staticqueue_gen_2.csv",
-        "episodes": 600,
+        "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.3,
         "eps_decay": 0.999,
@@ -135,7 +135,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
     1: {
         "description": "DynamicQueueDQN Gen 1 - Train from scratch with dynamic queue expansion",
         "data_file": "data/raw/queue_log_200_dynamicqueue_random_base.csv",
-        "episodes": 1000,
+        "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
         "eps_decay": 0.999,
@@ -146,7 +146,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
     2: {
         "description": "DynamicQueueDQN Gen 2 - Fine-tune on Gen 1 data",
         "data_file": "data/raw/queue_log_200_dynamicqueue_gen_1.csv",
-        "episodes": 800,
+        "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.5,
         "eps_decay": 0.999,
@@ -157,7 +157,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
     3: {
         "description": "DynamicQueueDQN Gen 3 - Aggressive fine-tune",
         "data_file": "data/raw/queue_log_200_dynamicqueue_gen_2.csv",
-        "episodes": 600,
+        "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.3,
         "eps_decay": 0.999,
@@ -171,7 +171,7 @@ _PRIORITY_QUEUE_DQN_CONFIG = {
     1: {
         "description": "Gen 1: Train from scratch with priority queue",
         "data_file": "data/raw/queue_log_200_random_base.csv",
-        "episodes": 1000,
+        "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
         "eps_decay": 0.999,
@@ -182,7 +182,7 @@ _PRIORITY_QUEUE_DQN_CONFIG = {
     2: {
         "description": "Gen 2: Fine-tune on Gen 1 data",
         "data_file": "data/raw/queue_log_200_priorityqueue_gen_1.csv",
-        "episodes": 800,
+        "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.3,
         "eps_decay": 0.999,
@@ -193,7 +193,7 @@ _PRIORITY_QUEUE_DQN_CONFIG = {
     3: {
         "description": "Gen 3: Aggressive fine-tune",
         "data_file": "data/raw/queue_log_200_priorityqueue_gen_2.csv",
-        "episodes": 600,
+        "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.1,
         "eps_decay": 0.999,

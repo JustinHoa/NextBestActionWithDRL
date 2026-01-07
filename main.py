@@ -22,6 +22,8 @@ from agents.penalty_dqn_agent import PenaltyDQNAgent
 from agents.fcfs_agent import FCFSAgent
 from agents.sjf_agent import SJFAgent
 from agents.linear_programming_agent import LinearProgrammingAgent
+from agents.lp_batch_scheduler import LPBatchScheduler
+from agents.greedy_agent import GreedyAgent
 from agents.static_queue_dqn_agent import StaticQueueDQNAgent
 from agents.dynamic_queue_dqn_agent import DynamicQueueDQNAgent
 from agents.priority_queue_dqn_agent import PriorityQueueDQNAgent
@@ -142,6 +144,10 @@ def get_agent(algo_name: str):
         return SJFAgent(STATE_SIZE, ACTION_SIZE)
     if algo_name == "LP":
         return LinearProgrammingAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "Greedy":
+        return GreedyAgent(STATE_SIZE, ACTION_SIZE)
+    if algo_name == "LPBatch":
+        return LPBatchScheduler(STATE_SIZE, ACTION_SIZE)
     
     # Static Queue Variants
     if algo_name == "StaticQueueDQN":
@@ -480,6 +486,96 @@ def run_lp_once(num_patients: int = 200):
     improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
     _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
     print(f"✅ LP Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
+
+def run_greedy_once(num_patients: int = 200):
+    """Entry point for: python main.py Greedy
+    
+    Greedy baseline - selects activities based on current waiting time from state.
+    """
+    algo_name = "Greedy"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    _append_note(log_dir, "\n=== Baseline: Greedy (Waiting Time) ===\n", num_patients)
+    
+    # Create Greedy agent
+    agent = get_agent("Greedy")
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
+    agent.save(model_path)
+    
+    # Get baseline
+    baseline_avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=None,
+        version_output="random_base",
+        seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
+    )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    
+    # Evaluate Greedy
+    avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=agent,
+        version_output="greedy",
+        is_model_run=True,
+        seed=EVAL_SEED,
+        model_name="Greedy",
+        gen_id=0,
+    )
+    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
+    print(f"✅ Greedy Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
+
+
+def run_lp_batch_once(num_patients: int = 200, batch_interval: float = 5.0):
+    """Entry point for: python main.py LPBatch
+    
+    LP Batch Scheduler - true Linear Programming with batch scheduling every 5 minutes.
+    """
+    from simulation.lp_batch_simulation import run_lp_batch_simulation
+    
+    algo_name = "LPBatch"
+    log_dir = os.path.join("logs", algo_name)
+    ensure_dir(log_dir)
+    _append_note(log_dir, "\n=== Baseline: LP Batch Scheduler ===\n", num_patients)
+    
+    # Create LP Batch Scheduler
+    scheduler = LPBatchScheduler(STATE_SIZE, ACTION_SIZE)
+    model_path = os.path.join(log_dir, f"model_{num_patients}.pth")
+    scheduler.save(model_path)
+    
+    # Get baseline using standard simulation
+    baseline_avg_time = run_simulation_isolated(
+        num_patients=num_patients,
+        agent=None,
+        version_output="random_base",
+        seed=EVAL_SEED,
+        model_name="Random",
+        gen_id=0,
+    )
+    
+    _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)
+    _append_note(log_dir, f"Batch Interval: {batch_interval} minutes\n", num_patients)
+    _append_note(log_dir, "====\n", num_patients)
+    
+    # Evaluate LP Batch Scheduler
+    avg_time = run_lp_batch_simulation(
+        num_patients=num_patients,
+        scheduler=scheduler,
+        version_output="lpbatch",
+        seed=EVAL_SEED,
+        model_name="LPBatch",
+        gen_id=0,
+        batch_interval=batch_interval,
+    )
+    
+    improvement = ((baseline_avg_time - avg_time) / baseline_avg_time) * 100 if baseline_avg_time > 0 else 0.0
+    _append_note(log_dir, f"Avg Time: {avg_time:.2f} | Improve Percentage: {improvement:+.2f}%\n", num_patients)
+    print(f"✅ LP Batch Avg Time: {avg_time:.2f} mins | Improvement: {improvement:+.2f}%")
 
 
 def train_penalty_dqn(agent, num_patients: int):
@@ -1065,7 +1161,7 @@ def _evaluate_checkpoints(algo_name: str, gen_id: int, log_dir: str, seed: int, 
 SUPPORTED_ALGOS = [
     "DQN", "DDQN", "PerDQN", "Dueling", "Rainbow", "MultiStepDQN", 
     "FORLAPS", "LearningToAct", "PenaltyDQN",
-    "FCFS", "SJF", "LP",  # Baseline algorithms
+    "FCFS", "SJF", "LP", "Greedy", "LPBatch",  # Baseline algorithms
     # Static Queue Variants
     "StaticQueueDQN", "StaticQueueDDQN", "StaticQueueDueling", "StaticQueuePerDQN", "StaticQueueRainbow", "StaticQueueMultiStepDQN",
     # Dynamic Queue Variants
@@ -1132,6 +1228,16 @@ if __name__ == "__main__":
     # Special-case LP: baseline algorithm
     if ALGO_TO_RUN == "LP":
         run_lp_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case Greedy: baseline algorithm
+    if ALGO_TO_RUN == "Greedy":
+        run_greedy_once(num_patients=NUM_PATIENTS)
+        sys.exit(0)
+    
+    # Special-case LPBatch: LP batch scheduler baseline
+    if ALGO_TO_RUN == "LPBatch":
+        run_lp_batch_once(num_patients=NUM_PATIENTS, batch_interval=5.0)
         sys.exit(0)
     
     # Special-case PenaltyDQN: single generation with penalty-based training

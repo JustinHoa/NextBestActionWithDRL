@@ -14,9 +14,10 @@ class FCFSAgent:
     This simulates a simple sequential processing strategy.
     """
     
-    def __init__(self, state_size: int, action_size: int):
+    def __init__(self, state_size: int, action_size: int, seed: int = 0):
         self.state_size = state_size
         self.action_size = action_size
+        self.seed = seed
         self.activity_order = list(range(21))  # Activities 0-20 (mapped from 1-21)
     
     def save(self, filename: str) -> None:

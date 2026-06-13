@@ -4,9 +4,10 @@ from typing import Dict, Optional
 import numpy as np
 
 class LearningToActAgent:
-    def __init__(self, state_size: int, action_size: int, policy: Optional[Dict[int, int]] = None):
+    def __init__(self, state_size: int, action_size: int, seed: int = 0, policy: Optional[Dict[int, int]] = None):
         self.state_size = state_size
         self.action_size = action_size
+        self.seed = seed
         self.policy: Dict[int, int] = policy or {}
 
     def save(self, filename: str) -> None:

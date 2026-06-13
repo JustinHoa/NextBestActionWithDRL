@@ -11,5 +11,5 @@ class StaticQueueDDQNAgent(DDQNAgent):
     - Inherits Double DQN learning logic from DDQNAgent
     """
     
-    def __init__(self, state_size, action_size):
-        super().__init__(state_size, action_size)
+    def __init__(self, state_size, action_size, seed=0):
+        super().__init__(state_size, action_size, seed=seed)

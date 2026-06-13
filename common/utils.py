@@ -98,7 +98,7 @@ _PENALTY_DQN_CONFIG = {
 _STATIC_QUEUE_DQN_CONFIG = {
     1: {
         "description": "StaticQueueDQN Gen 1 - Train from scratch with static queue constraints",
-        "data_file": "data/raw/queue_log_200_staticqueue_random_base.csv",
+        "data_file": "data/raw/queue_log_200_Random_gen_0.csv",
         "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
@@ -109,7 +109,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
     },
     2: {
         "description": "StaticQueueDQN Gen 2 - Fine-tune on Gen 1 data",
-        "data_file": "data/raw/queue_log_200_staticqueue_gen_1.csv",
+        "data_file": "data/raw/queue_log_200_StaticQueueDQN_gen_1.csv",
         "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.5,
@@ -120,7 +120,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
     },
     3: {
         "description": "StaticQueueDQN Gen 3 - Aggressive fine-tune",
-        "data_file": "data/raw/queue_log_200_staticqueue_gen_2.csv",
+        "data_file": "data/raw/queue_log_200_StaticQueueDQN_gen_2.csv",
         "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.3,
@@ -134,7 +134,7 @@ _STATIC_QUEUE_DQN_CONFIG = {
 _DYNAMIC_QUEUE_DQN_CONFIG = {
     1: {
         "description": "DynamicQueueDQN Gen 1 - Train from scratch with dynamic queue expansion",
-        "data_file": "data/raw/queue_log_200_dynamicqueue_random_base.csv",
+        "data_file": "data/raw/queue_log_200_Random_gen_0.csv",
         "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
@@ -145,7 +145,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
     },
     2: {
         "description": "DynamicQueueDQN Gen 2 - Fine-tune on Gen 1 data",
-        "data_file": "data/raw/queue_log_200_dynamicqueue_gen_1.csv",
+        "data_file": "data/raw/queue_log_200_DynamicQueueDQN_gen_1.csv",
         "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.5,
@@ -156,7 +156,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
     },
     3: {
         "description": "DynamicQueueDQN Gen 3 - Aggressive fine-tune",
-        "data_file": "data/raw/queue_log_200_dynamicqueue_gen_2.csv",
+        "data_file": "data/raw/queue_log_200_DynamicQueueDQN_gen_2.csv",
         "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.3,
@@ -170,7 +170,7 @@ _DYNAMIC_QUEUE_DQN_CONFIG = {
 _PRIORITY_QUEUE_DQN_CONFIG = {
     1: {
         "description": "Gen 1: Train from scratch with priority queue",
-        "data_file": "data/raw/queue_log_200_random_base.csv",
+        "data_file": "data/raw/queue_log_200_Random_gen_0.csv",
         "episodes": 10000,
         "lr": 1e-4,
         "eps_start": 1.0,
@@ -181,7 +181,7 @@ _PRIORITY_QUEUE_DQN_CONFIG = {
     },
     2: {
         "description": "Gen 2: Fine-tune on Gen 1 data",
-        "data_file": "data/raw/queue_log_200_priorityqueue_gen_1.csv",
+        "data_file": "data/raw/queue_log_200_PriorityQueueDQN_gen_1.csv",
         "episodes": 8000,
         "lr": 3e-5,
         "eps_start": 0.3,
@@ -192,7 +192,7 @@ _PRIORITY_QUEUE_DQN_CONFIG = {
     },
     3: {
         "description": "Gen 3: Aggressive fine-tune",
-        "data_file": "data/raw/queue_log_200_priorityqueue_gen_2.csv",
+        "data_file": "data/raw/queue_log_200_PriorityQueueDQN_gen_2.csv",
         "episodes": 6000,
         "lr": 1e-5,
         "eps_start": 0.1,
@@ -225,6 +225,27 @@ TRAIN_CONFIGS = {
     "DynamicQueuePerDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
     "DynamicQueueRainbow": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
     "DynamicQueueMultiStepDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    # Linear Dynamic Queue Variants
+    "LinearDynamicQueueDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "LinearDynamicQueueDDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "LinearDynamicQueueDueling": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "LinearDynamicQueuePerDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "LinearDynamicQueueRainbow": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "LinearDynamicQueueMultiStepDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    # Gauss Dynamic Queue Variants
+    "GaussDynamicQueueDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "GaussDynamicQueueDDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "GaussDynamicQueueDueling": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "GaussDynamicQueuePerDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "GaussDynamicQueueRainbow": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "GaussDynamicQueueMultiStepDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    # Random Dynamic Queue Variants
+    "RandomDynamicQueueDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "RandomDynamicQueueDDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "RandomDynamicQueueDueling": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "RandomDynamicQueuePerDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "RandomDynamicQueueRainbow": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
+    "RandomDynamicQueueMultiStepDQN": copy.deepcopy(_DYNAMIC_QUEUE_DQN_CONFIG),
     # Priority Queue Variants
     "PriorityQueueDQN": copy.deepcopy(_PRIORITY_QUEUE_DQN_CONFIG),
     "PriorityQueueDDQN": copy.deepcopy(_PRIORITY_QUEUE_DQN_CONFIG),
@@ -243,6 +264,12 @@ def get_train_config(algo_name: str, num_patients: int = 200) -> Dict[int, Dict[
     queue_prefix = ""
     if algo_name.startswith("StaticQueue"):
         queue_prefix = "staticqueue"
+    elif algo_name.startswith("LinearDynamicQueue"):
+        queue_prefix = "LinearDynamicQueue"
+    elif algo_name.startswith("GaussDynamicQueue"):
+        queue_prefix = "GaussDynamicQueue"
+    elif algo_name.startswith("RandomDynamicQueue"):
+        queue_prefix = "RandomDynamicQueue"
     elif algo_name.startswith("DynamicQueue"):
         queue_prefix = "dynamicqueue"
     elif algo_name.startswith("PriorityQueue"):
@@ -252,18 +279,12 @@ def get_train_config(algo_name: str, num_patients: int = 200) -> Dict[int, Dict[
     for gen_id in config:
         # Update data_file
         if gen_id == 1:
-            # Gen 1 uses random_base or queue-specific random_base
-            if queue_prefix:
-                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{queue_prefix}_random_base.csv"
-            else:
-                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_random_base.csv"
+            # Gen 1 uses Random_gen_0.csv (baseline data)
+            config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_Random_gen_0.csv"
         else:
-            # Gen 2+ uses previous generation's data
+            # Gen 2+ uses previous generation's data with algorithm name
             prev_gen = gen_id - 1
-            if queue_prefix:
-                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{queue_prefix}_gen_{prev_gen}.csv"
-            else:
-                config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{algo_name}_gen_{prev_gen}.csv"
+            config[gen_id]["data_file"] = f"data/raw/queue_log_{num_patients}_{algo_name}_gen_{prev_gen}.csv"
         
         # Update load_model
         if config[gen_id]["load_model"] is not None:

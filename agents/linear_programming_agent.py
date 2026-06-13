@@ -18,9 +18,10 @@ class LinearProgrammingAgent:
     This approximates an LP solution without requiring actual optimization solver.
     """
     
-    def __init__(self, state_size: int, action_size: int, activity_info_path: str = "data/raw/activity_info.json"):
+    def __init__(self, state_size: int, action_size: int, seed: int = 0, activity_info_path: str = "data/raw/activity_info.json"):
         self.state_size = state_size
         self.action_size = action_size
+        self.seed = seed
         self.activity_info = {}
         self._load_activity_info(activity_info_path)
         

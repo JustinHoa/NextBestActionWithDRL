@@ -188,7 +188,7 @@ def run_forlaps_once(
     random_queue_log = os.path.join("data", "raw", f"queue_log_{num_patients}_random_base.csv")
     if not os.path.exists(random_queue_log):
         _append_note(log_dir, "Random queue log missing; generating via simulation.\n", num_patients)
-        _run_simulation_isolated(num_patients=num_patients, agent=None, version_output="random_base", seed=eval_seed)
+        _run_simulation_isolated(num_patients=num_patients, agent=None, version_output="random_base", seed=eval_seed, model_name="Random", gen_id=0)
 
     offline_dir = os.path.join("data", "offline")
     ensure_dir(offline_dir)
@@ -242,8 +242,10 @@ def run_forlaps_once(
     baseline_avg_time = _run_simulation_isolated(
         num_patients=num_patients,
         agent=None,
-        version_output="random_base",
+        version_output="random_base_eval",
         seed=eval_seed,
+        model_name="Random",
+        gen_id=0,
     )
     
     _append_note(log_dir, f"Random base Avg Time: {baseline_avg_time:.2f}\n", num_patients)

@@ -1,124 +1,124 @@
-# Dự Án Điều Phối Bệnh Nhân Dùng Deep Reinforcement Learning
+# Constraint-Aware Deep Reinforcement Learning for Next Best Action Orchestration in Business Processes
 
-## 1. Giới thiệu (Overview)
+This repository contains a SimPy-based healthcare process simulation and multiple Deep Reinforcement Learning (DRL) agents (based on the Deep Q-Network family) designed for process orchestration and next-best-action (NBA) routing.
 
-Dự án này xây dựng một hệ thống AI sử dụng Deep Reinforcement Learning (DRL) để điều phối luồng bệnh nhân trong một trung tâm khám sức khỏe tổng quát. Mục tiêu là giảm thiểu thời gian chờ đợi của bệnh nhân và tối ưu hóa việc sử dụng tài nguyên (y bác sĩ, phòng khám).
+The code serves as the empirical evaluation environment for a proposed three-layer RL-based orchestration framework designed for governance-aware and constraint-compliant deployment in Business Process Management (BPM).
 
-Điểm đặc biệt của dự án là quy trình Training Loop khép kín:
+## 📖 Overview
 
-1.  **Simulation**: Mô phỏng môi trường bệnh viện để sinh dữ liệu hàng chờ (queue log). Dữ liệu ban đầu được tạo ra bằng cách cho bệnh nhân chọn phòng một cách ngẫu nhiên.
-2.  **Training**: Huấn luyện một Agent (bộ não AI) dựa trên dữ liệu hàng chờ đã sinh ra. Agent sẽ học cách chọn phòng khám tiếp theo sao cho thời gian chờ dự kiến là thấp nhất.
-3.  **Evaluation & Refinement**: Áp dụng Agent đã huấn luyện vào lại môi trường mô phỏng. Agent lúc này sẽ đưa ra quyết định "thông minh" hơn, tạo ra một bộ dữ liệu hàng chờ mới hiệu quả hơn. Quá trình này lặp lại, giúp Agent ngày càng được tinh chỉnh (fine-tuning) qua các "thế hệ".
+Existing reinforcement learning approaches for process optimization often assume fully autonomous decision-making and struggle with real-world constraints. This project shifts the paradigm from autonomous decision-making toward orchestration support. The RL agent optimizes the execution order and routing of process instances while preserving human control over business-critical decisions.
 
-## 2. Các thuật toán hỗ trợ (Algorithms)
+### Key Methodological Features
 
-Dự án được thiết kế theo hướng Module hóa (Modular Design) để dễ dàng thử nghiệm và mở rộng nhiều biến thể của DQN. Tất cả các thuật toán đều được tích hợp cơ chế **Action Masking** để đảm bảo AI không bao giờ chọn các hành động không hợp lệ (ví dụ: nam giới khám phụ khoa, hoặc khám lại phòng đã khám).
+- **Invalid Action Masking (IAM)**: Enforces state-dependent action feasibility directly at the output layer of the neural network to ensure compliance with strict operational constraints.
+- **Iteration Training**: A multi-generation "train-deploy-collect-retrain" strategy designed to mitigate distribution shift and improve convergence stability.
+- **Multiple DQN Variants**: The codebase evaluates six distinct DQN architectures: Vanilla DQN, Double DQN, Dueling DQN, Multi-step DQN, Prioritized Experience Replay (PerDQN), and Rainbow DQN.
+- **Literature Baselines**: For comparative evaluation, the repository also implements several published methods: tabular Q-Learning and SARSA from Hundogan et al. (2025), transition-probability-reward Q-Learning and DQN from Soliman et al. (2025), and the prescriptive Next Best Action method from Weinzierl et al. (2020).
 
-- [x] **DQN** (Deep Q-Network): Thuật toán DRL nền tảng.
-- [x] **Double DQN (DDQN)**: Cải tiến của DQN, giúp giảm việc đánh giá quá cao giá trị Q (Overestimation bias), làm cho việc học ổn định hơn.
-- [x] **Dueling DQN**: Sử dụng kiến trúc mạng đặc biệt, tách luồng ước tính giá trị của trạng thái (State Value) và lợi thế của hành động (Advantage), giúp học hiệu quả hơn trong các môi trường có nhiều hành động.
-- [x] **Multi-step Learning**: Cho phép agent nhìn xa hơn một bước trong tương lai khi cập nhật giá trị Q, giúp tăng tốc độ học.
-- [x] **Prioritized Experience Replay (PER)**: Thay vì lấy mẫu kinh nghiệm một cách ngẫu nhiên, PER ưu tiên những kinh nghiệm "gây bất ngờ" hoặc có lỗi dự đoán cao, giúp agent tập trung học vào những điều khó.
-- [x] **Rainbow DQN**: Một thuật toán tổng hợp, kết hợp tất cả các cải tiến trên để đạt được hiệu suất vượt trội.
+## 🏥 The Simulation Environment
 
-## 3. Cấu Trúc Thư Mục (Project Structure)
+The framework is validated through a discrete-event simulation of a general health check-up process.
 
-```
-rl_project/
-│
-├── main.py              # 🚀 FILE CHẠY CHÍNH: Điều khiển luồng Training
-├── requirements.txt     # Các thư viện cần thiết
-├── README.md            # Tài liệu hướng dẫn dự án
-│
-├── agents/              # 🧠 TRÍ TUỆ NHÂN TẠO (AI LOGIC)
-│   ├── __init__.py
-│   ├── base_agent.py    # Class cha, chứa logic act() và Masking
-│   ├── dqn_agent.py     # Cài đặt DQN
-│   ├── ddqn_agent.py    # Cài đặt Double DQN
-│   ├── dueling_agent.py # Cài đặt Dueling DQN
-│   └── rainbow_agent.py # Cài đặt Rainbow (DDQN, Dueling, PER, Multi-step)
-│
-├── common/              # 🛠️ CÔNG CỤ DÙNG CHUNG (UTILITIES)
-│   ├── __init__.py
-│   ├── env.py           # Môi trường RL (Gym-like) đọc Queue Log
-│   ├── buffers.py       # Replay Buffer và Prioritized Replay Buffer
-│   └── utils.py         # Hàm vẽ đồ thị, config, save/load
-│
-├── networks/            # 🕸️ KIẾN TRÚC MẠNG NEURAL (PYTORCH)
-│   ├── __init__.py
-│   ├── dqn_net.py       # Mạng Fully Connected cơ bản
-│   └── duel_net.py      # Mạng Dueling (Value & Advantage streams)
-│
-├── simulation/          # 🌍 MÔ PHỎNG QUY TRÌNH (SIMPY)
-│   ├── __init__.py
-│   └── simulation_process.py # Chạy SimPy: Sinh Event Log & Queue Log
-│
-├── data/                # 💾 DỮ LIỆU
-│   ├── raw/             # Input cho Training (Queue Logs, Activity Info)
-│   │   ├── activity_info.json
-│   │   └── ...
-│   └── evaluate/        # Output của Simulation (Event Logs)
-│       └── ...
-│
-└── logs/                # 📊 KẾT QUẢ TRAINING (CHECKPOINTS & PLOTS)
-    ├── DQN/
-    ├── DDQN/
-    └── ...
-```
+- **Process Structure**: The simulation models 21 clinical and paraclinical activities (e.g., General Medicine, Blood Tests, X-rays).
+- **Dynamics**: Patients are routed through the service network with stochastic arrival rates and service times, creating dynamic congestion patterns.
+  <img src="figures/General_Health_Check_Up_BPMN.png" width="70%">
 
-## 4. Quy trình vận hành (Pipeline)
+## 🚦Queuing Environments
 
-Hệ thống hoạt động theo mô hình 3 thế hệ (Generations) để tinh chỉnh dần dần:
+The repository evaluates the agents across seven distinct queuing scenarios to test robustness under varying capacity constraints:
 
-1.  **Generation 1 (Học từ đầu)**:
+1. Unlimited Queue (main_1): No capacity constraints; serves as the baseline environment.
+2. Static Queue (main_2): Each activity has a fixed maximum queue capacity.
+3. Priority Queue (main_3): Emergency patients (20% of the population) receive prioritized access to specific activities, preempting normal queues.
+4. Naive Dynamic Queue (main_4): When queues are full, the capacity of the activity with the shortest expected waiting time is temporarily expanded.
+5. Linear Dynamic Queue (main_5): Capacity scales linearly based on cluster progression.
+6. Gaussian Dynamic Queue (main_6): Queue capacity is sampled from a normal distribution, introducing stochastic capacity variations.
+7. Random Dynamic Queue (main_7): Capacity is sampled uniformly from a discrete set at each decision epoch for maximum unpredictability.
 
-    - **Data**: Dùng dữ liệu `queue_log_version_0.csv` được tạo ra từ mô phỏng chạy hoàn toàn ngẫu nhiên.
-    - **Training**: Agent học cách "né" những phòng khám quá đông và tuân thủ các quy tắc cơ bản.
-    - **Output**: Model `final_gen1.pth`.
+## ⚙️ Requirements & Installation
 
-2.  **Generation 2 (Tinh chỉnh)**:
-
-    - **Simulation**: Chạy mô phỏng với Model Gen 1 để tạo ra bộ dữ liệu mới `queue_log_version_1.csv`. Môi trường lúc này đã trật tự hơn.
-    - **Training**: Agent được huấn luyện tiếp (fine-tune) trên dữ liệu mới này.
-    - **Output**: Model `final_gen2.pth`.
-
-3.  **Generation 3 (Tối ưu hóa)**:
-    - **Simulation & Training**: Lặp lại quy trình với Learning Rate thấp hơn để tối ưu hóa sâu hơn nữa.
-    - **Output**: Model `final_gen3.pth`.
-
-## 5. Cách chạy dự án
-
-### Bước 1: Cài đặt thư viện
-
-Đảm bảo bạn đã cài đặt Python 3.8+ và các thư viện cần thiết.
+- Python 3.8+
+- GPU is used automatically if PyTorch detects CUDA.
+  Install the required dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### Bước 2: Chạy Training
+## 🚀 Quick Start (How to Run)
 
-Mở file `main.py`, tìm và sửa biến `ALGO_TO_RUN` thành thuật toán bạn muốn huấn luyện (ví dụ: `'DQN'`, `'DDQN'`, `'Dueling'`, `'Rainbow'`).
-
-Sau đó, chạy lệnh sau từ terminal:
+The code is organized around seven runnable entry points corresponding to the queuing environments listed above. All main scripts follow the same CLI pattern:
 
 ```bash
-python main.py
+python <main_script.py> <ALGO_NAME> [NUM_PATIENTS]
 ```
 
-Hệ thống sẽ tự động thực hiện chuỗi training 3 thế hệ. Các model đã huấn luyện (`.pth`) và biểu đồ kết quả (`.png`) sẽ được lưu vào thư mục `logs/<Tên thuật toán>/`.
+- **ALGO_NAME**: The specific RL variant or baseline method to run (see supported lists below).
+- **NUM_PATIENTS**: Optional parameter for patient volume (default is 200).
 
-### Bước 3: Chạy Simulation & Đánh giá
+### Example Commands
 
-Sau khi đã có model, bạn có thể dùng nó để chạy mô phỏng và xem hiệu quả thực tế.
+```bash
+# Run Rainbow DQN in an unlimited queue with 200 patients
+python main_1_unlimited_queue.py Rainbow 200
 
-1.  Mở file `simulation/simulation_process.py`.
-2.  Chỉnh sửa biến `MODEL_PATH` để trỏ đến file model bạn muốn đánh giá (ví dụ: `"logs/DDQN/final_gen3.pth"`).
-3.  Chạy file:
-    ```bash
-    python simulation/simulation_process.py
-    ```
+# Run Static Queue DQN with 200 patients
+python main_2_static_queue.py StaticQueueDQN 200
 
-File này sẽ chạy 2 kịch bản: một là mô phỏng với agent ngẫu nhiên (để làm baseline), hai là mô phỏng với agent DRL của bạn. Kết quả so sánh hiệu suất (thời gian khám trung bình) sẽ được in ra và một biểu đồ so sánh sẽ được lưu trong `data/evaluate/`.
+# Run MultiStep DQN in a highly stochastic random dynamic queue with 500 patients
+python main_7_random_dynamic_queue.py RandomDynamicQueueMultiStepDQN 500
+```
 
-Đồng thời, một file `event_log_version_XXX.csv` sẽ được tạo ra, bạn có thể sử dụng file này với các công cụ Process Mining (như Celonis, PM4Py) để phân tích quy trình chi tiết.
+## 📊 Supported Algorithms & Baselines
+
+Each environment script supports specific RL variants and baselines. Note that data files referenced by training configs are defined in `common/utils.py`. If a referenced queue log does not exist, the script will generate it automatically.
+**Main 1: Unlimited Queue (main_1_unlimited_queue.py)**
+
+- RL Agents: DQN, DDQN, Dueling, PerDQN, MultiStepDQN, Rainbow
+- Rule-based Baselines: FORLAPS, LearningToAct, FCFS, Greedy
+- Literature Baselines: HundoganQL, HundoganSARSA, SolimanQL, SolimanDQN, NextBestAction
+  **Main 2-7: Constrainted & Dynamic Queues**
+  (Scripts: main_2_static_queue.py through main_7_random_dynamic_queue.py)
+- RL Agents: Prefixed with the environment name (e.g., PriorityQueueRainbow, LinearDynamicQueueDDQN).
+- Baselines: Prefixed with the environment name (e.g., GaussDynamicQueueFCFS, DynamicQueueGreedy, StaticQueueFORLAPS).
+
+To see the list of algorithms supported by a specific `main_` script, you can intentionally provide an invalid algorithm name. The script will then print all supported options.
+
+Example:
+
+```bash
+python .\main_1_unlimited_queue.py hehe
+```
+
+Output:
+
+```bash
+❌ Incorrect algorithm: hehe
+Supported algorithms: ['DQN', 'DDQN', 'PerDQN', 'Dueling', 'Rainbow', 'MultiStepDQN', 'FORLAPS', 'LearningToAct', 'FCFS', 'Greedy', 'HundoganQL', 'HundoganSARSA', 'SolimanQL', 'SolimanDQN', 'NextBestAction']
+```
+
+## 📁 Output Artifacts
+
+Depending on the script and algorithm executed, the simulation will produce the following artifacts in your repository:
+
+- Checkpoints: `logs/<ALGO_NAME>/checkpoint_<N>_gen_<GEN>_<EP>.pth`
+- Best Models: `logs/<ALGO_NAME>/final_<N>_gen_<GEN>.pth`
+- Training Notes: `logs/<ALGO_NAME>/training_notes_<N>.txt`
+- Visualizations: Training plots (reward/loss curves) stored under the `logs/<ALGO_NAME>/ `directory.
+- Simulation Data:
+  - Queue logs generated under data/raw/ (filenames vary by environment/generation).
+  - Event logs produced under data/evaluate/.
+
+## ⚠️ Invalid Action Penalty (Experimental)
+
+All experiments reported in the paper use **Invalid Action Masking (IAM)** to enforce feasibility constraints directly in the action space. IAM guarantees that the RL agent only selects actions that satisfy medical and procedural constraints at each decision step.
+
+For completeness and reproducibility, the repository also supports the **Invalid Action Penalty (IAP)** mechanism. In this setting, the agent is allowed to select any action from the full action space (21 activities). If an action violates process constraints, the environment applies a large negative reward and the action is ignored.
+
+This option is provided primarily for **testing**, as penalty-based handling of invalid actions is known to significantly degrade learning stability in highly constrained environments.
+
+To run the penalty-based DQN experiment:
+
+```bash
+python penalty_dqn.py [NUM_PATIENTS]
+```

@@ -13,9 +13,10 @@ class GreedyAgent:
     This reflects real-time queue conditions for fairer scheduling.
     """
     
-    def __init__(self, state_size: int, action_size: int):
+    def __init__(self, state_size: int, action_size: int, seed: int = 0):
         self.state_size = state_size
         self.action_size = action_size
+        self.seed = seed
     
     def save(self, filename: str) -> None:
         """Save agent configuration."""
